@@ -13,6 +13,7 @@
 //   You should have received a copy of the GNU Lesser General Public License
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use pyo3::prelude::*;
 
 
@@ -24,5 +25,133 @@ pub struct Toolbox {
     pub label: String,
 
     #[pyo3(get)]
-    pub alias: String,
+    pub alias: String
+}
+
+#[pymethods]
+impl Toolbox {
+    
+    /// Returns all tools of this toolbox.
+    fn tools(&self) -> PyResult<Vec<Tool>> {
+        let mut tools = Vec::new();
+        let test_tool = Tool {
+            label: String::from("Test tool"),
+            description: String::from("A simple test tool ...")
+        };
+        tools.push(test_tool);
+
+        Ok(tools)
+    }
+}
+
+
+
+/// Represents a geoprocessing tool.
+#[pyclass]
+pub struct Tool {
+    #[pyo3(get)]
+    pub label: String,
+
+    #[pyo3(get)]
+    pub description: String
+}
+
+#[pymethods]
+impl Tool {
+
+    /// Returns all parameters of this tool.
+    fn parameter_info(&self) -> PyResult<Vec<Parameter>> {
+        let mut parameters = Vec::new();
+        let input_param = Parameter {
+            display_name: String::from("Input Features"),
+            name: String::from("in_features"),
+            data_type: String::from("GPFeatureLayer"),
+            parameter_type: String::from("Required"),
+            direction: String::from("Input"),
+            value: String::from("")
+        };
+        parameters.push(input_param);
+        
+        let output_param = Parameter {
+            display_name: String::from("Output Features"),
+            name: String::from("out_features"),
+            data_type: String::from("GPFeatureLayer"),
+            parameter_type: String::from("Derived"),
+            direction: String::from("Output"),
+            value: String::from("")
+        };
+        parameters.push(output_param);
+
+        Ok(parameters)
+    }
+
+    /// Executes this tool.
+    fn execute(&self, parameters: Vec<HashMap<String, String>>) -> PyResult<Vec<Parameter>> {
+        let mut input_value: &String;
+        let mut output_value: &String;
+        for parameter in parameters {
+            let parameter_entry = parameter.get("direction");
+            match parameter_entry {
+                Some(direction) => {
+                    let parameter_entry = parameter.get("value");
+                    match parameter_entry {
+                        Some(value) => {
+                            if "Input" == direction {
+                                input_value = value;
+                            }
+                            else if "Output" == direction {
+                                output_value = value;
+                            }
+                        },
+                        None => {}
+                    }
+                },
+                None => {}
+            }
+        }
+
+        let mut parameters = Vec::new();
+        let output_param = Parameter {
+            display_name: String::from("Output Features"),
+            name: String::from("out_features"),
+            data_type: String::from("GPFeatureLayer"),
+            parameter_type: String::from("Derived"),
+            direction: String::from("Output"),
+            value: String::from("New features ...")
+        };
+        parameters.push(output_param);
+
+        Ok(parameters)
+    }
+}
+
+
+
+/// Represents a geoprocessing tool parameter
+#[pyclass]
+//#[derive(FromPyObject)]
+pub struct Parameter {
+    #[pyo3(get)]
+    //#[pyo3(item("displayName"))]
+    pub display_name: String,
+
+    #[pyo3(get)]
+    //#[pyo3(item("name"))]
+    pub name: String,
+
+    #[pyo3(get)]
+    //#[pyo3(item("dataType"))]
+    pub data_type: String,
+
+    #[pyo3(get)]
+    //#[pyo3(item("parameterType"))]
+    pub parameter_type: String,
+
+    #[pyo3(get)]
+    //#[pyo3(item("direction"))]
+    pub direction: String,
+
+    #[pyo3(get)]
+    //#[pyo3(item("valueAsText"))]
+    pub value: String
 }

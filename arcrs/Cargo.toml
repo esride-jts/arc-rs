@@ -12,3 +12,7 @@ keywords = ["arcgis"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+[dependencies.pyo3]
+version = "0.12.3"
+features = ["extension-module"]

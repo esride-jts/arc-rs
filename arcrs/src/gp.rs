@@ -13,6 +13,10 @@
 //   You should have received a copy of the GNU Lesser General Public License
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use pyo3::prelude::*;
+
+/// Represents a toolbox offering geoprocessing tools.
+#[pyclass]
 pub struct Toolbox {
     pub label: String,
     pub alias: String,

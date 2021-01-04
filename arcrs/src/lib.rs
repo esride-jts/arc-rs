@@ -20,6 +20,7 @@ use pyo3::prelude::*;
 /// This module allows the implementation of Geoprocessing Tools using Rust.
 #[pymodule]
 fn arcrs(_py: Python, module: &PyModule) -> PyResult<()> {
+    module.add_class::<gp::Toolbox>()?;
 
     Ok(())
 }

@@ -59,6 +59,24 @@ pub struct Tool {
 #[pymethods]
 impl Tool {
 
+    fn getParameterInfo(&self, py: Python) -> PyResult<Vec<PyObject>> {
+        let mut parameters = Vec::new();
+
+        let arcpy = PyModule::from_code(py, r#"
+import arcpy
+
+def createParam():
+    return arcpy.Parameter()
+        "#, "arcpy_utils.py", "arcpy_utils")?;
+
+        for _index in 0..10 {
+            let result = arcpy.call1("createParam", ())?;
+            parameters.push(PyObject::from(result));
+        }
+
+        Ok(parameters)
+    }
+
     /// Returns all parameters of this tool.
     fn parameter_info(&self) -> PyResult<Vec<Parameter>> {
         let mut parameters = Vec::new();

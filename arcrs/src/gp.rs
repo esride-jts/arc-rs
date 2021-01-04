@@ -13,20 +13,7 @@
 //   You should have received a copy of the GNU Lesser General Public License
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod gp;
-
-#[cfg(test)]
-mod tests {
-
-    use super::gp;
-
-    #[test]
-    fn create_toolbox() {
-        let toolbox = gp::Toolbox {
-            label: String::from("Test Toolbox"),
-            alias:  String::from("test_rust")
-        };
-
-        assert_eq!("Test Toolbox", toolbox.label, "Label is wrong!");
-    }
+pub struct Toolbox {
+    pub label: String,
+    pub alias: String,
 }

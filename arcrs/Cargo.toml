@@ -6,7 +6,6 @@ edition = "2018"
 description = "Thin Python wrapper for implementing Geoprocessing Tools using Rust."
 documentation = "https://github.com/esride-jts/arc-rs/blob/main/README.md"
 readme = "../README.md"
-license = "LGPL-3.0"
 license-file = "../LICENSE"
 keywords = ["arcgis"]
 

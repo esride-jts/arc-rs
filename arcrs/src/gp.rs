@@ -15,9 +15,14 @@
 
 use pyo3::prelude::*;
 
+
+
 /// Represents a toolbox offering geoprocessing tools.
 #[pyclass]
 pub struct Toolbox {
+    #[pyo3(get)]
     pub label: String,
+
+    #[pyo3(get)]
     pub alias: String,
 }

@@ -16,15 +16,34 @@
 mod gp;
 
 use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
+
+
+
+/// Creates a new toolbox
+#[pyfunction]
+fn create_toolbox() -> PyResult<gp::Toolbox> {
+    let toolbox = gp::Toolbox {
+        label: String::from("Test Toolbox"),
+        alias:  String::from("test_rust")
+    };
+
+    Ok(toolbox)
+}
+
+
 
 /// This module allows the implementation of Geoprocessing Tools using Rust.
 #[pymodule]
 fn arcrs(_py: Python, module: &PyModule) -> PyResult<()> {
     module.add_class::<gp::Toolbox>()?;
-
+    module.add_function(wrap_pyfunction!(create_toolbox, module)?)?;
     Ok(())
 }
 
+
+
+/// Unit tests for the ArcGIS implementation.
 #[cfg(test)]
 mod tests {
 

@@ -15,6 +15,7 @@
 
 use std::collections::HashMap;
 use pyo3::prelude::*;
+use pyo3::types::IntoPyDict;
 
 
 
@@ -58,6 +59,17 @@ pub struct Tool {
 
 #[pymethods]
 impl Tool {
+
+    fn get(&self, py: Python) -> PyResult<Vec<PyObject>> {
+        let mut parameters: Vec<PyObject> = Vec::new();
+        //let arcpy = py.import("arcpy")?;
+        //let parameter = arcpy.get("arcpy.Parameter()")?;
+        let locals = [("arcpy", py.import("arcpy")?)].into_py_dict(py);
+        let parameter = py.eval("arcpy.Parameter()", None, Some(&locals))?;
+        parameters.push(parameter.to_object(py));
+
+        Ok(parameters)
+    }
 
     fn getParameterInfo(&self, py: Python) -> PyResult<Vec<PyObject>> {
         let mut parameters = Vec::new();

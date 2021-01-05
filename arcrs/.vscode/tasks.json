@@ -23,5 +23,16 @@
 			"problemMatcher": [],
 			"group": "build"
 		},
+		{
+			"label": "deploy pyd",
+			"type": "shell",
+			"command": "./scripts/Copy_Library.ps1",
+			"args": [
+				"./target/debug/arcrs.pyd", "../deploy/arcrust"
+			],
+			"dependsOn": ["build pyd"],
+			"problemMatcher": [],
+			"group": "build"
+		},
     ]
 }

@@ -66,6 +66,7 @@ impl Tool {
         //let parameter = arcpy.get("arcpy.Parameter()")?;
         let locals = [("arcpy", py.import("arcpy")?)].into_py_dict(py);
         let parameter = py.eval("arcpy.Parameter()", None, Some(&locals))?;
+        parameter.setattr("direction", "Output")?;
         parameters.push(parameter.to_object(py));
 
         Ok(parameters)

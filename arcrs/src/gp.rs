@@ -13,9 +13,72 @@
 //   You should have received a copy of the GNU Lesser General Public License
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+pub mod api;
+
 use std::collections::HashMap;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
+
+use std::cell::RefCell;
+thread_local!(static REGISTRY: RefCell<Vec<Box<dyn api::GpTool>>> = RefCell::new(Vec::new()));
+thread_local!(static PYTHON_REGISTRY: RefCell<Vec<Tool>> = RefCell::new(Vec::new()));
+
+
+
+pub struct ToolRegistry<T: api::GpTool> {
+    tools: Vec<Tool>,
+    gp_tools: Vec<T>
+}
+
+impl<T: api::GpTool> ToolRegistry<T> {
+
+    fn get_gp_tool(&self, tool_index: usize) -> Option<&T> {
+        if (tool_index < self.gp_tools.len()) {
+            return None;
+        }
+
+        return Some(&self.gp_tools[tool_index]);
+    }
+}
+
+pub fn register_tool<T: 'static +  api::GpTool>(gp_tool: Box<T>) {
+    let mut tool_index: usize = 0;
+
+    REGISTRY.with(|reg_cell| {
+        let mut registry_tools = reg_cell.borrow_mut();
+        tool_index = registry_tools.len();
+
+        let new_tool = Tool {
+            label: gp_tool.name().to_string(),
+            description: gp_tool.description().to_string(),
+            tool_index: tool_index
+        };
+        registry_tools.push(gp_tool);
+
+        PYTHON_REGISTRY.with(|pyreg_cell| {
+            let mut pyregistry_tools = pyreg_cell.borrow_mut();
+            pyregistry_tools.push(new_tool);
+        });
+    });
+
+    /*
+    let mut tools: Vec<Tool> = Vec::with_capacity(gp_tools.len());
+    for index in 0..gp_tools.len() {
+        let new_tool = Tool {
+            label: String::from("Test tool"),
+            description: String::from("A simple test tool ..."),
+            tool_index: index
+        };
+
+        tools.push(new_tool);
+    }
+
+    ToolRegistry {
+        tools: tools,
+        gp_tools: gp_tools
+    }
+    */
+}
 
 
 
@@ -35,11 +98,19 @@ impl Toolbox {
     /// Returns all tools of this toolbox.
     fn tools(&self) -> PyResult<Vec<Tool>> {
         let mut tools = Vec::new();
-        let test_tool = Tool {
-            label: String::from("Test tool"),
-            description: String::from("A simple test tool ...")
-        };
-        tools.push(test_tool);
+        
+        PYTHON_REGISTRY.with(|pyreg_cell| {
+            let pyregistry_tools = pyreg_cell.borrow();
+            for index in 0..pyregistry_tools.len() {
+                let pytool = &pyregistry_tools[index];
+                let tool_copy = Tool {
+                    label: pytool.label.as_str().to_string(),
+                    description: pytool.description.as_str().to_string(),
+                    tool_index: pytool.tool_index
+                };
+                tools.push(tool_copy);
+            }
+        });
 
         Ok(tools)
     }
@@ -47,94 +118,43 @@ impl Toolbox {
 
 
 
-/// Represents all available geoprocessing parameter types.
-enum DataType {
-    GPFeatureLayer
-}
-
-impl DataType {
-    pub fn as_str(&self) -> &'static str {
-        match *self {
-            DataType::GPFeatureLayer => "GPFeatureLayer"
-        }
-    }
-}
-
-
-
-// Represents all available geoprocessing parameter types.
-enum ParameterType {
-    Required,
-    Optional,
-    Derived
-}
-
-impl ParameterType {
-    pub fn as_str(&self) -> &'static str {
-        match *self {
-            ParameterType::Required => "Required",
-            ParameterType::Optional => "Optional",
-            ParameterType::Derived => "Derived"
-        }
-    }
-}
-
-
-
-
-// Represents all available geoprocessing parameter directions.
-enum Direction {
-    Input,
-    Output
-}
-
-impl Direction {
-    pub fn as_str(&self) -> &'static str {
-        match *self {
-            Direction::Input => "Input",
-            Direction::Output => "Output"
-        }
-    }
-}
-
 /// Represents the geoprocessing utilities.
 
 /// Creates a default parameter using arcpy.
-fn create_default_parameter(py: Python, display_name: String, name: String,
-    data_type: DataType, parameter_type: ParameterType, direction: Direction) -> PyResult<&PyAny> {
+fn create_default_parameter(py: Python, param: api::GpParameter) -> PyResult<&PyAny> {
     let locals = [("arcpy", py.import("arcpy")?)].into_py_dict(py);
     let parameter = py.eval("arcpy.Parameter()", None, Some(&locals))?;
-    parameter.setattr("displayName", display_name)?;
-    parameter.setattr("name", name)?;
-    parameter.setattr("dataType", data_type.as_str())?;
-    parameter.setattr("parameterType", parameter_type.as_str())?;
-    parameter.setattr("direction", direction.as_str())?;
+    parameter.setattr("displayName", param.display_name())?;
+    parameter.setattr("name", param.name())?;
+    parameter.setattr("dataType", param.data_type().as_str())?;
+    parameter.setattr("parameterType", param.parameter_type().as_str())?;
+    parameter.setattr("direction", param.direction().as_str())?;
 
     Ok(parameter)
 }
 
 /// Creates a required input paramater of data type features.
 fn create_features_input_parameter(py: Python) -> PyResult<PyObject> {
-    let parameter = create_default_parameter(py, 
-        String::from("Input Features"),
-        String::from("in_features"),
-        DataType::GPFeatureLayer,
-        ParameterType::Required,
-        Direction::Input
-    )?;
+    let parameter = create_default_parameter(py, api::GpParameter {
+        display_name: String::from("Input Features"),
+        name: String::from("in_features"),
+        data_type: api::DataType::GPFeatureLayer,
+        parameter_type: api::ParameterType::Required,
+        direction: api::Direction::Input
+    })?;
 
     Ok(parameter.to_object(py))
 }
 
 /// Creates a derived output paramater of data type features.
 fn create_features_output_parameter(py: Python) -> PyResult<PyObject> {
-    let parameter = create_default_parameter(py, 
-        String::from("Output Features"),
-        String::from("out_features"),
-        DataType::GPFeatureLayer,
-        ParameterType::Derived,
-        Direction::Output
-    )?;
+    let parameter = create_default_parameter(py, api::GpParameter { 
+        display_name: String::from("Output Features"),
+        name: String::from("out_features"),
+        data_type: api::DataType::GPFeatureLayer,
+        parameter_type: api::ParameterType::Derived,
+        direction: api::Direction::Output
+    })?;
 
     Ok(parameter.to_object(py))
 }
@@ -148,14 +168,16 @@ pub struct Tool {
     pub label: String,
 
     #[pyo3(get)]
-    pub description: String
+    pub description: String,
+
+    pub tool_index: usize
 }
 
 #[pymethods]
 impl Tool {
 
     /// Returns all parameters of this tool.
-    fn getParameterInfo(&self, py: Python) -> PyResult<Vec<PyObject>> {
+    fn parameter_info(&self, py: Python) -> PyResult<Vec<PyObject>> {
         let mut parameters: Vec<PyObject> = Vec::new();
         let input_parameter = create_features_input_parameter(py)?;
         parameters.push(input_parameter);

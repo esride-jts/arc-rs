@@ -25,7 +25,7 @@ class TestTool(object):
         self.description = self._rust_tool.description
 
     def getParameterInfo(self):
-        return self._rust_tool.getParameterInfo()
+        return self._rust_tool.parameter_info()
 
     def isLicensed(self): #optional
         return True

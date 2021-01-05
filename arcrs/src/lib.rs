@@ -31,13 +31,43 @@ fn create_toolbox() -> PyResult<gp::Toolbox> {
     Ok(toolbox)
 }
 
+/// Dummy GP Tool
+struct DummyGpTool {
+
+}
+
+impl gp::api::GpTool for DummyGpTool {
+
+    fn name(&self) -> &str {
+        "Dummy Tool"
+    }
+
+    fn description(&self) -> &str {
+        "Dummy tool doing nothing!"
+    }
+
+    fn parameters(&self) -> std::vec::Vec<gp::api::GpParameter> { 
+        Vec::new()
+    }
+
+    fn execute(&self, _: Vec<gp::api::GpParameter>) { 
+        
+    }
+}
+
+
 
 
 /// This module allows the implementation of Geoprocessing Tools using Rust.
 #[pymodule]
 fn arcrs(_py: Python, module: &PyModule) -> PyResult<()> {
+
+    // Create and initialize the GP tools
+    gp::register_tool(Box::new(DummyGpTool {}));
+
     module.add_class::<gp::Toolbox>()?;
     module.add_function(wrap_pyfunction!(create_toolbox, module)?)?;
+    
     Ok(())
 }
 
@@ -53,7 +83,8 @@ mod tests {
     fn create_toolbox() {
         let toolbox = gp::Toolbox {
             label: String::from("Test Toolbox"),
-            alias:  String::from("test_rust")
+            alias:  String::from("test_rust"),
+            python_tools: Vec::new()
         };
 
         assert_eq!("Test Toolbox", toolbox.label, "Label is wrong!");

@@ -170,6 +170,8 @@ impl Tool {
 
     /// Executes this tool.
     fn execute(&self, py:Python, parameters: PyObject, messages: PyObject) -> PyResult<()> {
+        messages.call_method1(py, "addMessage", (String::from("Starting ..."), ))?;
+
         Ok(())
     }
 }

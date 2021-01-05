@@ -47,6 +47,100 @@ impl Toolbox {
 
 
 
+/// Represents all available geoprocessing parameter types.
+enum DataType {
+    GPFeatureLayer
+}
+
+impl DataType {
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            DataType::GPFeatureLayer => "GPFeatureLayer"
+        }
+    }
+}
+
+
+
+// Represents all available geoprocessing parameter types.
+enum ParameterType {
+    Required,
+    Optional,
+    Derived
+}
+
+impl ParameterType {
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            ParameterType::Required => "Required",
+            ParameterType::Optional => "Optional",
+            ParameterType::Derived => "Derived"
+        }
+    }
+}
+
+
+
+
+// Represents all available geoprocessing parameter directions.
+enum Direction {
+    Input,
+    Output
+}
+
+impl Direction {
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            Direction::Input => "Input",
+            Direction::Output => "Output"
+        }
+    }
+}
+
+/// Represents the geoprocessing utilities.
+
+/// Creates a default parameter using arcpy.
+fn create_default_parameter(py: Python, display_name: String, name: String,
+    data_type: DataType, parameter_type: ParameterType, direction: Direction) -> PyResult<&PyAny> {
+    let locals = [("arcpy", py.import("arcpy")?)].into_py_dict(py);
+    let parameter = py.eval("arcpy.Parameter()", None, Some(&locals))?;
+    parameter.setattr("displayName", display_name)?;
+    parameter.setattr("name", name)?;
+    parameter.setattr("dataType", data_type.as_str())?;
+    parameter.setattr("parameterType", parameter_type.as_str())?;
+    parameter.setattr("direction", direction.as_str())?;
+
+    Ok(parameter)
+}
+
+/// Creates a required input paramater of data type features.
+fn create_features_input_parameter(py: Python) -> PyResult<PyObject> {
+    let parameter = create_default_parameter(py, 
+        String::from("Input Features"),
+        String::from("in_features"),
+        DataType::GPFeatureLayer,
+        ParameterType::Required,
+        Direction::Input
+    )?;
+
+    Ok(parameter.to_object(py))
+}
+
+/// Creates a derived output paramater of data type features.
+fn create_features_output_parameter(py: Python) -> PyResult<PyObject> {
+    let parameter = create_default_parameter(py, 
+        String::from("Output Features"),
+        String::from("out_features"),
+        DataType::GPFeatureLayer,
+        ParameterType::Derived,
+        Direction::Output
+    )?;
+
+    Ok(parameter.to_object(py))
+}
+
+
+
 /// Represents a geoprocessing tool.
 #[pyclass]
 pub struct Tool {
@@ -60,99 +154,23 @@ pub struct Tool {
 #[pymethods]
 impl Tool {
 
-    fn get(&self, py: Python) -> PyResult<Vec<PyObject>> {
-        let mut parameters: Vec<PyObject> = Vec::new();
-        //let arcpy = py.import("arcpy")?;
-        //let parameter = arcpy.get("arcpy.Parameter()")?;
-        let locals = [("arcpy", py.import("arcpy")?)].into_py_dict(py);
-        let parameter = py.eval("arcpy.Parameter()", None, Some(&locals))?;
-        parameter.setattr("direction", "Output")?;
-        parameters.push(parameter.to_object(py));
-
-        Ok(parameters)
-    }
-
-    fn getParameterInfo(&self, py: Python) -> PyResult<Vec<PyObject>> {
-        let mut parameters = Vec::new();
-
-        let arcpy = PyModule::from_code(py, r#"
-import arcpy
-
-def createParam():
-    return arcpy.Parameter()
-        "#, "arcpy_utils.py", "arcpy_utils")?;
-
-        for _index in 0..10 {
-            let result = arcpy.call1("createParam", ())?;
-            parameters.push(PyObject::from(result));
-        }
-
-        Ok(parameters)
-    }
-
     /// Returns all parameters of this tool.
-    fn parameter_info(&self) -> PyResult<Vec<Parameter>> {
-        let mut parameters = Vec::new();
-        let input_param = Parameter {
-            display_name: String::from("Input Features"),
-            name: String::from("in_features"),
-            data_type: String::from("GPFeatureLayer"),
-            parameter_type: String::from("Required"),
-            direction: String::from("Input"),
-            value: String::from("")
-        };
-        parameters.push(input_param);
-        
-        let output_param = Parameter {
-            display_name: String::from("Output Features"),
-            name: String::from("out_features"),
-            data_type: String::from("GPFeatureLayer"),
-            parameter_type: String::from("Derived"),
-            direction: String::from("Output"),
-            value: String::from("")
-        };
-        parameters.push(output_param);
+    fn getParameterInfo(&self, py: Python) -> PyResult<Vec<PyObject>> {
+        let mut parameters: Vec<PyObject> = Vec::new();
+        let input_parameter = create_features_input_parameter(py)?;
+        parameters.push(input_parameter);
+
+        let output_parameter = create_features_output_parameter(py)?;
+        parameters.push(output_parameter);
 
         Ok(parameters)
     }
+    
+
 
     /// Executes this tool.
-    fn execute(&self, parameters: Vec<HashMap<String, String>>) -> PyResult<Vec<Parameter>> {
-        let mut input_value: &String;
-        let mut output_value: &String;
-        for parameter in parameters {
-            let parameter_entry = parameter.get("direction");
-            match parameter_entry {
-                Some(direction) => {
-                    let parameter_entry = parameter.get("value");
-                    match parameter_entry {
-                        Some(value) => {
-                            if "Input" == direction {
-                                input_value = value;
-                            }
-                            else if "Output" == direction {
-                                output_value = value;
-                            }
-                        },
-                        None => {}
-                    }
-                },
-                None => {}
-            }
-        }
-
-        let mut parameters = Vec::new();
-        let output_param = Parameter {
-            display_name: String::from("Output Features"),
-            name: String::from("out_features"),
-            data_type: String::from("GPFeatureLayer"),
-            parameter_type: String::from("Derived"),
-            direction: String::from("Output"),
-            value: String::from("New features ...")
-        };
-        parameters.push(output_param);
-
-        Ok(parameters)
+    fn execute(&self, py:Python, parameters: PyObject, messages: PyObject) -> PyResult<()> {
+        Ok(())
     }
 }
 

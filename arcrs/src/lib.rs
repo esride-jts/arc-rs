@@ -50,24 +50,15 @@ impl gp::api::GpTool for DummyGpTool {
 /// Creates a new toolbox
 #[pyfunction]
 fn create_toolbox(label: &str, alias: &str) -> PyResult<gp::PyToolbox> {
-    // Methods from traits must be known in current scope!
-    use gp::api::GpTool;
     let dummy_tool = DummyGpTool {
     };
 
-    let py_tool = gp::PyTool {
-        label: dummy_tool.label().to_string(),
-        description: dummy_tool.description().to_string(),
-        tool_impl: Box::new(dummy_tool)
+    let pytoolbox_factory = gp::PyToolboxFactory {
     };
 
-    let toolbox = gp::PyToolbox { 
-        label: label.to_string(),
-        alias: alias.to_string(),
-        py_tools: vec![py_tool]
-    };
+    let py_toolbox = pytoolbox_factory.create_toolbox(label, alias, vec![dummy_tool])?;
 
-    Ok(toolbox)
+    Ok(py_toolbox)
 }
 
 

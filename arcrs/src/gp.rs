@@ -21,6 +21,37 @@ use pyo3::types::IntoPyDict;
 
 
 
+/// Represents a factory for creating toolboxes.
+pub struct PyToolboxFactory {
+}
+
+impl PyToolboxFactory {
+
+    /// Creates a new toolbox using the specified geoprocessing tools.
+    pub fn create_toolbox<T: 'static + api::GpTool + Send>(&self, label: &str, alias: &str,
+        gp_tools: impl IntoIterator<Item = T>) -> PyResult<PyToolbox> {
+        let mut py_tools = Vec::new();
+        for gp_tool in gp_tools {
+            let py_tool = PyTool {
+                label: gp_tool.label().to_string(),
+                description: gp_tool.description().to_string(),
+                tool_impl: Box::new(gp_tool)
+            };
+            py_tools.push(py_tool);
+        }
+
+        let py_toolbox = PyToolbox { 
+            label: label.to_string(),
+            alias: alias.to_string(),
+            py_tools: py_tools
+        };
+
+        Ok(py_toolbox)
+    }
+}
+
+
+
 /// Represents a python toolbox offering geoprocessing tools.
 #[pyclass]
 pub struct PyToolbox {
@@ -153,12 +184,6 @@ pub struct PyTool {
     pub description: String,
 
     pub tool_impl: Box<dyn api::GpTool + Send>
-}
-
-impl PyTool {
-    fn init(&mut self, gp_tool: Box<dyn api::GpTool + Send>) {
-        self.tool_impl = gp_tool;
-    }
 }
 
 #[pymethods]

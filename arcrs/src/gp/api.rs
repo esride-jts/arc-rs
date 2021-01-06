@@ -17,13 +17,15 @@ use pyo3::prelude::*;
 
 /// Represents all available geoprocessing parameter types.
 pub enum DataType {
-    GPFeatureLayer
+    GPFeatureLayer,
+    GPFeatureRecordSetLayer
 }
 
 impl DataType {
     pub fn as_str(&self) -> &'static str {
         match *self {
-            DataType::GPFeatureLayer => "GPFeatureLayer"
+            DataType::GPFeatureLayer => "GPFeatureLayer",
+            DataType::GPFeatureRecordSetLayer => "GPFeatureRecordSetLayer"
         }
     }
 }

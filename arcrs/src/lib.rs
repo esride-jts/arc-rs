@@ -35,7 +35,13 @@ impl gp::api::GpTool for DummyGpTool {
     }
 
     fn parameters(&self) -> Vec<gp::api::GpParameter> { 
-        Vec::new()
+        vec![gp::api::GpParameter{
+            display_name: String::from("Input Features"),
+            name: String::from("in_features"),
+            data_type: gp::api::DataType::GPFeatureRecordSetLayer,
+            parameter_type: gp::api::ParameterType::Required,
+            direction: gp::api::Direction::Input
+        }]
     }
 
     fn execute(&self, parameters: Vec<gp::api::GpParameter>, messages: gp::api::PyGpMessages) -> PyResult<()> {

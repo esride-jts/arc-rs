@@ -120,7 +120,7 @@ fn create_default_parameter(py: Python, param: api::GpParameter) -> PyResult<&Py
     let parameter = py.eval("arcpy.Parameter()", None, Some(&locals))?;
     parameter.setattr("displayName", param.display_name())?;
     parameter.setattr("name", param.name())?;
-    parameter.setattr("dataType", param.data_type().as_str())?;
+    parameter.setattr("datatype", param.data_type().as_str())?;
     parameter.setattr("parameterType", param.parameter_type().as_str())?;
     parameter.setattr("direction", param.direction().as_str())?;
 

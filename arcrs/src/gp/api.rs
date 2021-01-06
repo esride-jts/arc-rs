@@ -13,8 +13,9 @@
 //   You should have received a copy of the GNU Lesser General Public License
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-/// Represents all available geoprocessing parameter types.
+use pyo3::prelude::*;
 
+/// Represents all available geoprocessing parameter types.
 pub enum DataType {
     GPFeatureLayer
 }
@@ -99,14 +100,32 @@ impl GpParameter {
 
 
 
+/// Represents the Python geoprocessing messages environment.
+pub struct PyGpMessages<'a> {
+    pub py: Python<'a>,
+    pub messages: PyObject
+}
+
+impl PyGpMessages<'_> {
+    
+    pub fn add_message(&self, message: &str) -> PyResult<()> {
+        self.messages.call_method1(self.py, "addMessage", (message.to_string(), ))?;
+
+        Ok(())
+    }
+
+}
+
+
+
 /// Offers the functionalities of a geoprocessing tool
 pub trait GpTool {
 
-    fn name(&self) -> &str;
+    fn label(&self) -> &str;
 
     fn description(&self) -> &str;
 
     fn parameters(&self) -> Vec<GpParameter>;
 
-    fn execute(&self, parameters: Vec<GpParameter>);
+    fn execute(&self, parameters: Vec<GpParameter>, messages: PyGpMessages) -> PyResult<()>;
 }

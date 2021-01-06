@@ -15,76 +15,31 @@
 
 pub mod api;
 
-use std::collections::HashMap;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
 
+/// Stores the geoprocessing tools for this environment.
 use std::cell::RefCell;
 thread_local!(static REGISTRY: RefCell<Vec<Box<dyn api::GpTool>>> = RefCell::new(Vec::new()));
-thread_local!(static PYTHON_REGISTRY: RefCell<Vec<Tool>> = RefCell::new(Vec::new()));
 
 
 
-pub struct ToolRegistry<T: api::GpTool> {
-    tools: Vec<Tool>,
-    gp_tools: Vec<T>
-}
-
-impl<T: api::GpTool> ToolRegistry<T> {
-
-    fn get_gp_tool(&self, tool_index: usize) -> Option<&T> {
-        if (tool_index < self.gp_tools.len()) {
-            return None;
-        }
-
-        return Some(&self.gp_tools[tool_index]);
-    }
-}
-
+/// Registers a new geoprocessing tool for this environment.
 pub fn register_tool<T: 'static +  api::GpTool>(gp_tool: Box<T>) {
     let mut tool_index: usize = 0;
 
     REGISTRY.with(|reg_cell| {
         let mut registry_tools = reg_cell.borrow_mut();
         tool_index = registry_tools.len();
-
-        let new_tool = Tool {
-            label: gp_tool.name().to_string(),
-            description: gp_tool.description().to_string(),
-            tool_index: tool_index
-        };
         registry_tools.push(gp_tool);
-
-        PYTHON_REGISTRY.with(|pyreg_cell| {
-            let mut pyregistry_tools = pyreg_cell.borrow_mut();
-            pyregistry_tools.push(new_tool);
-        });
     });
-
-    /*
-    let mut tools: Vec<Tool> = Vec::with_capacity(gp_tools.len());
-    for index in 0..gp_tools.len() {
-        let new_tool = Tool {
-            label: String::from("Test tool"),
-            description: String::from("A simple test tool ..."),
-            tool_index: index
-        };
-
-        tools.push(new_tool);
-    }
-
-    ToolRegistry {
-        tools: tools,
-        gp_tools: gp_tools
-    }
-    */
 }
 
 
 
-/// Represents a toolbox offering geoprocessing tools.
+/// Represents a python toolbox offering geoprocessing tools.
 #[pyclass]
-pub struct Toolbox {
+pub struct PyToolbox {
     #[pyo3(get)]
     pub label: String,
 
@@ -93,22 +48,22 @@ pub struct Toolbox {
 }
 
 #[pymethods]
-impl Toolbox {
+impl PyToolbox {
     
     /// Returns all tools of this toolbox.
-    fn tools(&self) -> PyResult<Vec<Tool>> {
+    fn tools(&self) -> PyResult<Vec<PyTool>> {
         let mut tools = Vec::new();
         
-        PYTHON_REGISTRY.with(|pyreg_cell| {
-            let pyregistry_tools = pyreg_cell.borrow();
-            for index in 0..pyregistry_tools.len() {
-                let pytool = &pyregistry_tools[index];
-                let tool_copy = Tool {
-                    label: pytool.label.as_str().to_string(),
-                    description: pytool.description.as_str().to_string(),
-                    tool_index: pytool.tool_index
+        REGISTRY.with(|reg_cell| {
+            let registry_tools = reg_cell.borrow();
+            for tool_index in 0..registry_tools.len() {
+                let gp_tool = &registry_tools[tool_index];
+                let pytool = PyTool {
+                    label: gp_tool.label().to_string(),
+                    description: gp_tool.description().to_string(),
+                    tool_index: tool_index
                 };
-                tools.push(tool_copy);
+                tools.push(pytool);
             }
         });
 
@@ -159,11 +114,19 @@ fn create_features_output_parameter(py: Python) -> PyResult<PyObject> {
     Ok(parameter.to_object(py))
 }
 
+/// Creates parameters from an arcpy parameters array
+fn create_parameters_from_arcpy(py: Python, parameters: PyObject) -> Result<Vec<api::GpParameter>, PyErr> {
+    let mut gp_parameters = Vec::new();
+    let locals = [("arcpy", py.import("arcpy")?)].into_py_dict(py);
+    
+    Ok(gp_parameters)
+}
 
 
-/// Represents a geoprocessing tool.
+
+/// Represents a Python geoprocessing tool.
 #[pyclass]
-pub struct Tool {
+pub struct PyTool {
     #[pyo3(get)]
     pub label: String,
 
@@ -174,7 +137,7 @@ pub struct Tool {
 }
 
 #[pymethods]
-impl Tool {
+impl PyTool {
 
     /// Returns all parameters of this tool.
     fn parameter_info(&self, py: Python) -> PyResult<Vec<PyObject>> {
@@ -192,7 +155,20 @@ impl Tool {
 
     /// Executes this tool.
     fn execute(&self, py:Python, parameters: PyObject, messages: PyObject) -> PyResult<()> {
-        messages.call_method1(py, "addMessage", (String::from("Starting ..."), ))?;
+        let gp_parameters = create_parameters_from_arcpy(py, parameters)?;
+        let py_messages = api::PyGpMessages {
+            py,
+            messages
+        };
+
+        REGISTRY.with(|reg_cell| -> PyResult<()> {
+            let registry_tools = reg_cell.borrow();
+            let gp_tool = &registry_tools[self.tool_index];
+
+            gp_tool.execute(gp_parameters, py_messages)?;
+
+            Ok(())
+        })?;
 
         Ok(())
     }
@@ -200,10 +176,10 @@ impl Tool {
 
 
 
-/// Represents a geoprocessing tool parameter
+/// Represents a Python geoprocessing tool parameter
 #[pyclass]
 //#[derive(FromPyObject)]
-pub struct Parameter {
+pub struct PyParameter {
     #[pyo3(get)]
     //#[pyo3(item("displayName"))]
     pub display_name: String,

@@ -22,10 +22,10 @@ use pyo3::wrap_pyfunction;
 
 /// Creates a new toolbox
 #[pyfunction]
-fn create_toolbox() -> PyResult<gp::Toolbox> {
-    let toolbox = gp::Toolbox {
-        label: String::from("Test Toolbox"),
-        alias:  String::from("test_rust")
+fn create_toolbox(label: &str, alias: &str) -> PyResult<gp::PyToolbox> {
+    let toolbox = gp::PyToolbox {
+        label: label.to_string(),
+        alias: alias.to_string()
     };
 
     Ok(toolbox)
@@ -38,7 +38,7 @@ struct DummyGpTool {
 
 impl gp::api::GpTool for DummyGpTool {
 
-    fn name(&self) -> &str {
+    fn label(&self) -> &str {
         "Dummy Tool"
     }
 
@@ -50,8 +50,10 @@ impl gp::api::GpTool for DummyGpTool {
         Vec::new()
     }
 
-    fn execute(&self, _: Vec<gp::api::GpParameter>) { 
-        
+    fn execute(&self, parameters: Vec<gp::api::GpParameter>, messages: gp::api::PyGpMessages) -> PyResult<()> {
+        messages.add_message("Hello from Rust!")?;
+
+        Ok(())
     }
 }
 
@@ -65,7 +67,7 @@ fn arcrs(_py: Python, module: &PyModule) -> PyResult<()> {
     // Create and initialize the GP tools
     gp::register_tool(Box::new(DummyGpTool {}));
 
-    module.add_class::<gp::Toolbox>()?;
+    module.add_class::<gp::PyToolbox>()?;
     module.add_function(wrap_pyfunction!(create_toolbox, module)?)?;
     
     Ok(())
@@ -81,10 +83,9 @@ mod tests {
 
     #[test]
     fn create_toolbox() {
-        let toolbox = gp::Toolbox {
+        let toolbox = gp::PyToolbox {
             label: String::from("Test Toolbox"),
-            alias:  String::from("test_rust"),
-            python_tools: Vec::new()
+            alias:  String::from("test_rust")
         };
 
         assert_eq!("Test Toolbox", toolbox.label, "Label is wrong!");

@@ -34,7 +34,7 @@ impl gp::api::GpTool for DummyGpTool {
         "Dummy tool doing nothing!"
     }
 
-    fn parameters(&self) -> std::vec::Vec<gp::api::GpParameter> { 
+    fn parameters(&self) -> Vec<gp::api::GpParameter> { 
         Vec::new()
     }
 
@@ -66,17 +66,9 @@ fn create_toolbox(label: &str, alias: &str) -> PyResult<gp::PyToolbox> {
 /// This module allows the implementation of Geoprocessing Tools using Rust.
 #[pymodule]
 fn arcrs(_py: Python, module: &PyModule) -> PyResult<()> {
-
-    // Create and initialize the GP tools
-    /*
-    static dummy:DummyGpTool = DummyGpTool {
-    };
-    gp::register_tool(Box::new(dummy));
-    */
-
     module.add_class::<gp::PyToolbox>()?;
     module.add_function(wrap_pyfunction!(create_toolbox, module)?)?;
-    
+
     Ok(())
 }
 

@@ -92,7 +92,7 @@ impl PyToolbox {
     }
 
     /// Executes the specified tool
-    fn tool_execute(&self, py: Python, tool_index: usize, py_parameters: PyObject, py_messages: PyObject) -> PyResult<()> {
+    fn tool_execute(&self, py: Python, tool_index: usize, py_parameters: Vec<PyObject>, py_messages: PyObject) -> PyResult<()> {
         match self.py_tools.get(tool_index) {
             Some(py_tool) => py_tool.execute(py, py_parameters, py_messages),
             _ => Err(PyValueError::new_err("Tool index is invalid!"))
@@ -165,9 +165,31 @@ fn create_arcpy_parameters(py: Python, parameters: Vec<api::GpParameter>) -> PyR
 }
 
 /// Creates parameters from an arcpy parameters array
-fn create_parameters_from_arcpy(py: Python, py_parameters: PyObject) -> Result<Vec<api::GpParameter>, PyErr> {
-    let mut gp_parameters = Vec::new();
-    let locals = [("arcpy", py.import("arcpy")?)].into_py_dict(py);
+fn create_parameters_from_arcpy(py: Python, py_parameters: Vec<PyObject>) -> Result<Vec<api::GpParameter>, PyErr> {
+    let mut gp_parameters = Vec::with_capacity(py_parameters.len());
+    for py_parameter in py_parameters {
+        let data_type = py_parameter.getattr(py, "datatype")?;
+        let data_type_as_text: String = data_type.extract(py)?;
+        //if "GPFeatureRecordSetLayer" == data_type_as_text {
+            let arcpy = PyModule::import(py, "arcpy")?;
+            let parameter_describe = arcpy.call1("Describe", (&py_parameter,))?;
+            let catalog_path = parameter_describe.getattr("catalogPath")?;
+            let catalog_path_as_text: String = catalog_path.extract()?;
+            //inCatalogPath = arcpy.Describe(inFeatures).catalogPath
+
+            let value_as_text = py_parameter.getattr(py, "valueAsText")?;
+            let value: String = value_as_text.extract(py)?;
+            let gp_parameter = api::GpParameter {
+            display_name: value,
+            name: catalog_path_as_text,
+            data_type: api::DataType::GPFeatureLayer,
+            parameter_type: api::ParameterType::Required,
+            direction: api::Direction::Input 
+        };
+
+        gp_parameters.push(gp_parameter);
+        //}
+    }
     
     Ok(gp_parameters)
 }
@@ -200,7 +222,7 @@ impl PyTool {
 
 
     /// Executes this tool.
-    fn execute(&self, py: Python, py_parameters: PyObject, py_messages: PyObject) -> PyResult<()> {
+    fn execute(&self, py: Python, py_parameters: Vec<PyObject>, py_messages: PyObject) -> PyResult<()> {
         let gp_parameters = create_parameters_from_arcpy(py, py_parameters)?;
         let py_gpmessages = api::PyGpMessages {
             py: &py,

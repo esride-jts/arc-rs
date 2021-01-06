@@ -58,7 +58,6 @@ fn create_toolbox(label: &str, alias: &str) -> PyResult<gp::PyToolbox> {
     let py_tool = gp::PyTool {
         label: dummy_tool.label().to_string(),
         description: dummy_tool.description().to_string(),
-        tool_index: 0,
         tool_impl: Box::new(dummy_tool)
     };
 
@@ -109,7 +108,6 @@ mod tests {
         let py_tool = gp::PyTool {
             label: dummy_tool.label().to_string(),
             description: dummy_tool.description().to_string(),
-            tool_index: 0,
             tool_impl: Box::new(dummy_tool)
         };
 

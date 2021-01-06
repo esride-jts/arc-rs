@@ -35,23 +35,47 @@ pub struct PyToolbox {
 
 #[pymethods]
 impl PyToolbox {
-    
-    /// Returns all tools of this toolbox.
-    fn tools(&self) -> PyResult<Vec<PyTool>> {
-        let mut py_tools = Vec::with_capacity(self.py_tools.len());
+
+    /// Returns the label of the specified tool.
+    fn tool_label(&self, tool_index: usize) -> PyResult<String> {
+        match self.py_tools.get(tool_index) {
+            Some(py_tool) => Ok(py_tool.label.to_string()),
+            _ => Err(PyValueError::new_err("Tool index is invalid!"))
+        }
+    }
+
+    /// Returns the description of the specified tool.
+    fn tool_description(&self, tool_index: usize) -> PyResult<String> {
+        match self.py_tools.get(tool_index) {
+            Some(py_tool) => Ok(py_tool.description.to_string()),
+            _ => Err(PyValueError::new_err("Tool index is invalid!"))
+        }
+    }
+
+    /// Returns the parameter infos for the specified tool
+    fn tool_parameter_info(&self, py: Python, tool_index: usize) -> PyResult<Vec<PyObject>> {
+        match self.py_tools.get(tool_index) {
+            Some(py_tool) => py_tool.parameter_info(py),
+            _ => Err(PyValueError::new_err("Tool index is invalid!"))
+        }
+    }
+
+    /// Executes the specified tool
+    fn tool_execute(&self, py: Python, tool_index: usize, py_parameters: PyObject, py_messages: PyObject) -> PyResult<()> {
+        match self.py_tools.get(tool_index) {
+            Some(py_tool) => py_tool.execute(py, py_parameters, py_messages),
+            _ => Err(PyValueError::new_err("Tool index is invalid!"))
+        }
+    }
+
+    /// Returns all tool names of this toolbox.
+    fn tools(&self) -> PyResult<Vec<String>> {
+        let mut py_tool_names = Vec::with_capacity(self.py_tools.len());
         for py_tool in &self.py_tools {
-            /*
-            let pytool = PyTool {
-                label: py_tool.label().to_string(),
-                description: py_tool.description().to_string(),
-                tool_index: 0,
-                tool_impl: Box::new()
-            };
-            py_tools.push(pytool);
-            */
+            py_tool_names.push(py_tool.label.to_string());
         }
 
-        Ok(py_tools)
+        Ok(py_tool_names)
     }
 }
 
@@ -127,8 +151,6 @@ pub struct PyTool {
 
     #[pyo3(get)]
     pub description: String,
-
-    pub tool_index: usize,
 
     pub tool_impl: Box<dyn api::GpTool + Send>
 }

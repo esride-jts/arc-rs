@@ -21,35 +21,6 @@ use pyo3::types::IntoPyDict;
 
 
 
-/// Dummy GP Tool
-#[derive(Copy, Clone)]
-struct DummyGpTool {
-
-}
-
-impl api::GpTool for DummyGpTool {
-
-    fn label(&self) -> &str {
-        "Dummy Tool"
-    }
-
-    fn description(&self) -> &str {
-        "Dummy tool doing nothing!"
-    }
-
-    fn parameters(&self) -> std::vec::Vec<api::GpParameter> { 
-        Vec::new()
-    }
-
-    fn execute(&self, parameters: Vec<api::GpParameter>, messages: api::PyGpMessages) -> PyResult<()> {
-        messages.add_message("Hello from Rust!")?;
-
-        Ok(())
-    }
-}
-
-
-
 /// Represents a python toolbox offering geoprocessing tools.
 #[pyclass]
 pub struct PyToolbox {
@@ -57,7 +28,9 @@ pub struct PyToolbox {
     pub label: String,
 
     #[pyo3(get)]
-    pub alias: String
+    pub alias: String,
+
+    pub py_tools: Vec<PyTool>
 }
 
 #[pymethods]
@@ -65,19 +38,20 @@ impl PyToolbox {
     
     /// Returns all tools of this toolbox.
     fn tools(&self) -> PyResult<Vec<PyTool>> {
-        let mut tools = Vec::new();
-        
-        let pytool = PyTool {
-            label: String::from("Dummy Tool"),
-            description: String::from("Faker"),
-            tool_index: 0,
-            tool_impl: Box::new(DummyGpTool{
+        let mut py_tools = Vec::with_capacity(self.py_tools.len());
+        for py_tool in &self.py_tools {
+            /*
+            let pytool = PyTool {
+                label: py_tool.label().to_string(),
+                description: py_tool.description().to_string(),
+                tool_index: 0,
+                tool_impl: Box::new()
+            };
+            py_tools.push(pytool);
+            */
+        }
 
-            })
-        };
-        tools.push(pytool);
-
-        Ok(tools)
+        Ok(py_tools)
     }
 }
 
@@ -156,12 +130,18 @@ pub struct PyTool {
 
     pub tool_index: usize,
 
-    tool_impl: Box<dyn api::GpTool + Send>
+    pub tool_impl: Box<dyn api::GpTool + Send>
+}
+
+impl PyTool {
+    fn init(&mut self, gp_tool: Box<dyn api::GpTool + Send>) {
+        self.tool_impl = gp_tool;
+    }
 }
 
 #[pymethods]
 impl PyTool {
-
+ 
     /// Returns all parameters of this tool.
     fn parameter_info(&self, py: Python) -> PyResult<Vec<PyObject>> {
         let gp_parameters = self.tool_impl.parameters();

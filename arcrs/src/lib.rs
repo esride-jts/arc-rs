@@ -18,14 +18,54 @@ mod gp;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
+/// Dummy GP Tool
+#[derive(Copy, Clone)]
+pub struct DummyGpTool {
+
+}
+
+impl gp::api::GpTool for DummyGpTool {
+
+    fn label(&self) -> &str {
+        "Dummy Tool"
+    }
+
+    fn description(&self) -> &str {
+        "Dummy tool doing nothing!"
+    }
+
+    fn parameters(&self) -> std::vec::Vec<gp::api::GpParameter> { 
+        Vec::new()
+    }
+
+    fn execute(&self, parameters: Vec<gp::api::GpParameter>, messages: gp::api::PyGpMessages) -> PyResult<()> {
+        messages.add_message("Hello from Rust!")?;
+
+        Ok(())
+    }
+}
+
 
 
 /// Creates a new toolbox
 #[pyfunction]
 fn create_toolbox(label: &str, alias: &str) -> PyResult<gp::PyToolbox> {
+    // Methods from traits must be known in current scope!
+    use gp::api::GpTool;
+    let dummy_tool = DummyGpTool {
+    };
+
+    let py_tool = gp::PyTool {
+        label: dummy_tool.label().to_string(),
+        description: dummy_tool.description().to_string(),
+        tool_index: 0,
+        tool_impl: Box::new(dummy_tool)
+    };
+
     let toolbox = gp::PyToolbox { 
         label: label.to_string(),
-        alias: alias.to_string()
+        alias: alias.to_string(),
+        py_tools: vec![py_tool]
     };
 
     Ok(toolbox)
@@ -57,12 +97,26 @@ fn arcrs(_py: Python, module: &PyModule) -> PyResult<()> {
 mod tests {
 
     use super::gp;
+    use super::DummyGpTool;
 
     #[test]
     fn create_toolbox() {
+        // Methods from traits must be known in current scope!
+        use gp::api::GpTool;
+        let dummy_tool = DummyGpTool {
+        };
+
+        let py_tool = gp::PyTool {
+            label: dummy_tool.label().to_string(),
+            description: dummy_tool.description().to_string(),
+            tool_index: 0,
+            tool_impl: Box::new(dummy_tool)
+        };
+
         let toolbox = gp::PyToolbox {
             label: String::from("Test Toolbox"),
-            alias:  String::from("test_rust")
+            alias:  String::from("test_rust"),
+            py_tools: vec![py_tool]
         };
 
         assert_eq!("Test Toolbox", toolbox.label, "Label is wrong!");

@@ -114,8 +114,19 @@ fn create_features_output_parameter(py: Python) -> PyResult<PyObject> {
     Ok(parameter.to_object(py))
 }
 
+/// Creates arcpy parameters from tool parameters
+fn create_arcpy_parameters(py: Python, parameters: Vec<api::GpParameter>) -> PyResult<Vec<PyObject>> {
+    let mut py_parameters: Vec<PyObject> = Vec::with_capacity(parameters.len());
+    for parameter in parameters {
+        let py_parameter = create_default_parameter(py, parameter)?;
+        py_parameters.push(py_parameter.to_object(py));
+    }
+
+    Ok(py_parameters)
+}
+
 /// Creates parameters from an arcpy parameters array
-fn create_parameters_from_arcpy(py: Python, parameters: PyObject) -> Result<Vec<api::GpParameter>, PyErr> {
+fn create_parameters_from_arcpy(py: Python, py_parameters: PyObject) -> Result<Vec<api::GpParameter>, PyErr> {
     let mut gp_parameters = Vec::new();
     let locals = [("arcpy", py.import("arcpy")?)].into_py_dict(py);
     
@@ -141,31 +152,34 @@ impl PyTool {
 
     /// Returns all parameters of this tool.
     fn parameter_info(&self, py: Python) -> PyResult<Vec<PyObject>> {
-        let mut parameters: Vec<PyObject> = Vec::new();
-        let input_parameter = create_features_input_parameter(py)?;
-        parameters.push(input_parameter);
+        let py_parameters = REGISTRY.with(|reg_cell| -> PyResult<Vec<PyObject>> {
+            let registry_tools = reg_cell.borrow();
+            let gp_tool = &registry_tools[self.tool_index];
 
-        let output_parameter = create_features_output_parameter(py)?;
-        parameters.push(output_parameter);
+            let gp_parameters = gp_tool.parameters();
+            let py_parameters = create_arcpy_parameters(py, gp_parameters)?;
 
-        Ok(parameters)
+            Ok(py_parameters)
+        })?;
+
+        Ok(py_parameters)
     }
     
 
 
     /// Executes this tool.
-    fn execute(&self, py:Python, parameters: PyObject, messages: PyObject) -> PyResult<()> {
-        let gp_parameters = create_parameters_from_arcpy(py, parameters)?;
-        let py_messages = api::PyGpMessages {
+    fn execute(&self, py:Python, py_parameters: PyObject, py_messages: PyObject) -> PyResult<()> {
+        let gp_parameters = create_parameters_from_arcpy(py, py_parameters)?;
+        let py_gpmessages = api::PyGpMessages {
             py,
-            messages
+            py_messages
         };
 
         REGISTRY.with(|reg_cell| -> PyResult<()> {
             let registry_tools = reg_cell.borrow();
             let gp_tool = &registry_tools[self.tool_index];
 
-            gp_tool.execute(gp_parameters, py_messages)?;
+            gp_tool.execute(gp_parameters, py_gpmessages)?;
 
             Ok(())
         })?;

@@ -12,7 +12,7 @@ class ToolRegistry(object):
     """
 
     def __init__(self):
-        self._toolbox = arcrs.create_toolbox()
+        self._toolbox = arcrs.create_toolbox('Rust Tools', 'rust_tools')
         self._tools = self._toolbox.tools()
     
     def find_tool(self, tool_label):

@@ -23,7 +23,7 @@ use pyo3::wrap_pyfunction;
 /// Creates a new toolbox
 #[pyfunction]
 fn create_toolbox(label: &str, alias: &str) -> PyResult<gp::PyToolbox> {
-    let toolbox = gp::PyToolbox {
+    let toolbox = gp::PyToolbox { 
         label: label.to_string(),
         alias: alias.to_string()
     };
@@ -32,6 +32,7 @@ fn create_toolbox(label: &str, alias: &str) -> PyResult<gp::PyToolbox> {
 }
 
 /// Dummy GP Tool
+#[derive(Copy, Clone)]
 struct DummyGpTool {
 
 }
@@ -59,13 +60,14 @@ impl gp::api::GpTool for DummyGpTool {
 
 
 
-
 /// This module allows the implementation of Geoprocessing Tools using Rust.
 #[pymodule]
 fn arcrs(_py: Python, module: &PyModule) -> PyResult<()> {
 
     // Create and initialize the GP tools
-    gp::register_tool(Box::new(DummyGpTool {}));
+    static dummy:DummyGpTool = DummyGpTool {
+    };
+    gp::register_tool(Box::new(dummy));
 
     module.add_class::<gp::PyToolbox>()?;
     module.add_function(wrap_pyfunction!(create_toolbox, module)?)?;

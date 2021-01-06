@@ -15,23 +15,36 @@
 
 pub mod api;
 
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
 
 /// Stores the geoprocessing tools for this environment.
 use std::cell::RefCell;
 thread_local!(static REGISTRY: RefCell<Vec<Box<dyn api::GpTool>>> = RefCell::new(Vec::new()));
+thread_local!(static PY_REGISTRY: RefCell<Vec<PyTool>> = RefCell::new(Vec::new()));
 
 
 
 /// Registers a new geoprocessing tool for this environment.
 pub fn register_tool<T: 'static +  api::GpTool>(gp_tool: Box<T>) {
-    let mut tool_index: usize = 0;
-
-    REGISTRY.with(|reg_cell| {
+    let py_tool = REGISTRY.with(|reg_cell| -> PyTool {
         let mut registry_tools = reg_cell.borrow_mut();
-        tool_index = registry_tools.len();
+        let tool_index = registry_tools.len();
+
+        let py_tool = PyTool {
+            label: gp_tool.label().to_string(),
+            description: gp_tool.description().to_string(),
+            tool_index: tool_index
+        };
+
         registry_tools.push(gp_tool);
+        return py_tool;
+    });
+
+    PY_REGISTRY.with(|reg_pycell| {
+        let mut registry_pytools = reg_pycell.borrow_mut();
+        registry_pytools.push(py_tool);
     });
 }
 
@@ -54,6 +67,14 @@ impl PyToolbox {
     fn tools(&self) -> PyResult<Vec<PyTool>> {
         let mut tools = Vec::new();
         
+        let pytool = PyTool {
+            label: String::from("Dummy Tool"),
+            description: String::from("Faker"),
+            tool_index: 0
+        };
+        tools.push(pytool);
+
+        /*
         REGISTRY.with(|reg_cell| {
             let registry_tools = reg_cell.borrow();
             for tool_index in 0..registry_tools.len() {
@@ -66,6 +87,7 @@ impl PyToolbox {
                 tools.push(pytool);
             }
         });
+        */
 
         Ok(tools)
     }
@@ -154,12 +176,19 @@ impl PyTool {
     fn parameter_info(&self, py: Python) -> PyResult<Vec<PyObject>> {
         let py_parameters = REGISTRY.with(|reg_cell| -> PyResult<Vec<PyObject>> {
             let registry_tools = reg_cell.borrow();
-            let gp_tool = &registry_tools[self.tool_index];
+            match registry_tools.get(self.tool_index) {
+                Some(gp_tool) => {
+                    let gp_parameters = gp_tool.parameters();
+                    let py_parameters = create_arcpy_parameters(py, gp_parameters)?;
 
-            let gp_parameters = gp_tool.parameters();
-            let py_parameters = create_arcpy_parameters(py, gp_parameters)?;
+                    Ok(py_parameters)
+                },
+                _ => { 
+                    Err(PyValueError::new_err("Tool registry failed!"))
+                }
+            }
 
-            Ok(py_parameters)
+            //let py_parameters = create_arcpy_parameters(py, Vec::new())?;
         })?;
 
         Ok(py_parameters)
@@ -168,10 +197,10 @@ impl PyTool {
 
 
     /// Executes this tool.
-    fn execute(&self, py:Python, py_parameters: PyObject, py_messages: PyObject) -> PyResult<()> {
+    fn execute(&self, py: Python, py_parameters: PyObject, py_messages: PyObject) -> PyResult<()> {/*
         let gp_parameters = create_parameters_from_arcpy(py, py_parameters)?;
         let py_gpmessages = api::PyGpMessages {
-            py,
+            py: &py,
             py_messages
         };
 
@@ -182,7 +211,7 @@ impl PyTool {
             gp_tool.execute(gp_parameters, py_gpmessages)?;
 
             Ok(())
-        })?;
+        })?;*/
 
         Ok(())
     }

@@ -102,14 +102,14 @@ impl GpParameter {
 
 /// Represents the Python geoprocessing messages environment.
 pub struct PyGpMessages<'a> {
-    pub py: Python<'a>,
+    pub py: &'a Python<'a>,
     pub py_messages: PyObject
 }
 
 impl PyGpMessages<'_> {
     
     pub fn add_message(&self, message: &str) -> PyResult<()> {
-        self.py_messages.call_method1(self.py, "addMessage", (message.to_string(), ))?;
+        self.py_messages.call_method1(*self.py, "addMessage", (message.to_string(), ))?;
 
         Ok(())
     }

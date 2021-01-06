@@ -17,9 +17,9 @@ class TestTool(object):
     """
     
     def __init__(self):
-        self._rust_tool = tool_registry.find_tool('Test tool')
+        self._rust_tool = tool_registry.find_tool('Dummy Tool')
         if None is self._rust_tool:
-            raise ValueError('Rust tool is not registered found!')
+            raise ValueError('Rust tool is not registered!')
 
         self.label = self._rust_tool.label
         self.description = self._rust_tool.description

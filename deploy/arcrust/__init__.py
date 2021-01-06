@@ -25,3 +25,10 @@ class ToolRegistry(object):
                 return tool
 
         return None
+
+    def list_tools(self):
+        """
+        Returns all tools being registered.
+        """
+
+        return self._tools

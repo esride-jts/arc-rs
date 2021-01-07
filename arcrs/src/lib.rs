@@ -44,12 +44,12 @@ impl gp::api::GpTool for DummyGpTool {
         }]
     }
 
-    fn execute(&self, parameters: Vec<gp::api::GpParameter>, messages: gp::api::PyGpMessages) -> PyResult<()> {
+    fn execute(&self, parameters: Vec<gp::api::PyParameterValue>, messages: gp::api::PyGpMessages) -> PyResult<()> {
         messages.add_message("Hello from Rust!")?;
 
         for gp_parameter in parameters {
-            messages.add_message(&gp_parameter.display_name)?;
-            messages.add_message(&gp_parameter.name)?;
+            messages.add_message(&gp_parameter.display_name()?)?;
+            messages.add_message(&gp_parameter.name()?)?;
         }
 
         Ok(())

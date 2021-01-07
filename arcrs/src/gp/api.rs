@@ -13,8 +13,8 @@
 //   You should have received a copy of the GNU Lesser General Public License
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::PyTuple;
 use std::str::FromStr;
 
 /// Represents all available geoprocessing parameter types.
@@ -222,6 +222,20 @@ impl PyParameterValue<'_> {
         }
     }
 
+    pub fn name(&self) -> PyResult<String> {
+        let pyname = self.py_parameter.getattr(*self.py, "name")?;
+        let name = pyname.extract(*self.py)?;
+
+        Ok(name)
+    }
+
+    pub fn display_name(&self) -> PyResult<String> {
+        let pydisplay_name = self.py_parameter.getattr(*self.py, "displayName")?;
+        let display_name = pydisplay_name.extract(*self.py)?;
+
+        Ok(display_name)
+    }
+
     pub fn data_type(&self) -> PyResult<DataType> {
         let pydata_type = self.py_parameter.getattr(*self.py, "datatype")?;
         let data_type_as_text: &str = pydata_type.extract(*self.py)?;
@@ -296,10 +310,44 @@ impl PySearchCursor<'_> {
         Ok(new_instance)
     }
 
-    pub fn next(&self) -> PyResult<Vec<PyObject>> {
-        let row = self.py_cursor.call_method0("next")?.extract()?;
+    pub fn next(&self) -> PyResult<PyRow> {
+        let row_values = self.py_cursor.call_method0("next")?.extract()?;
+        let row = PyRow::new(self.py, row_values);
 
         Ok(row)
+    }
+}
+
+
+
+/// Represents a row from a cursor.
+pub struct PyRow<'a> {
+    pub py: &'a Python<'a>,
+    pub py_values: Vec<PyObject>
+}
+
+impl PyRow<'_> {
+
+    pub fn new<'a>(py: &'a Python, py_values: Vec<PyObject>) -> PyRow<'a> {
+        PyRow {
+            py,
+            py_values
+        }
+    }
+
+    pub fn value(&self, index: usize) -> PyResult<String> {
+        match self.py_values.get(index) {
+            Some(value) => {
+                let value_as_string = value.extract(*self.py)?;
+
+                Ok(value_as_string)
+            },
+            _ => Err(PyValueError::new_err("Failed to access the row value!"))
+        }
+    }
+
+    pub fn value_count(&self) -> usize {
+        self.py_values.len()
     }
 }
 
@@ -314,5 +362,5 @@ pub trait GpTool {
 
     fn parameters(&self) -> Vec<GpParameter>;
 
-    fn execute(&self, parameters: Vec<GpParameter>, messages: PyGpMessages) -> PyResult<()>;
+    fn execute(&self, parameters: Vec<PyParameterValue>, messages: PyGpMessages) -> PyResult<()>;
 }

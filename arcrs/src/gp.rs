@@ -165,10 +165,11 @@ fn create_arcpy_parameters(py: Python, parameters: Vec<api::GpParameter>) -> PyR
 }
 
 /// Creates parameters from an arcpy parameters array
-fn create_parameters_from_arcpy(py: Python, py_parameters: Vec<PyObject>) -> Result<Vec<api::GpParameter>, PyErr> {
-    let mut gp_parameters = Vec::with_capacity(py_parameters.len());
+fn create_parameters_from_arcpy<'a>(py: &'a Python, py_parameters: Vec<PyObject>) -> Result<Vec<api::PyParameterValue<'a>>, PyErr> {
+    let mut pyparameter_values = Vec::with_capacity(py_parameters.len());
     for py_parameter in py_parameters {
         let pyparameter_value = api::PyParameterValue::new(&py, py_parameter);
+        /*
         let data_type = pyparameter_value.data_type()?;
         match data_type {
             api::DataType::GPFeatureLayer | api::DataType::GPFeatureRecordSetLayer => {
@@ -182,7 +183,14 @@ fn create_parameters_from_arcpy(py: Python, py_parameters: Vec<PyObject>) -> Res
                 let search_cursor = api::PySearchCursor::new(&py, &catalog_path, vec!["*".to_string()], "1=1")?;
                 loop {
                     match search_cursor.next() {
-                        Ok(next_row) => {},
+                        Ok(next_row) => {
+                            for field_index in 0..next_row.value_count() {
+                                let row_value = next_row.value(field_index)?;
+
+                                let gp_parameter = builder.build();
+                                gp_parameters.push(gp_parameter);                
+                            }
+                        },
                         Err(_) =>  break
                     }
                 }
@@ -191,9 +199,12 @@ fn create_parameters_from_arcpy(py: Python, py_parameters: Vec<PyObject>) -> Res
                 gp_parameters.push(gp_parameter);       
             }
         }
+        */
+
+        pyparameter_values.push(pyparameter_value);
     }
     
-    Ok(gp_parameters)
+    Ok(pyparameter_values)
 }
 
 
@@ -225,7 +236,7 @@ impl PyTool {
 
     /// Executes this tool.
     fn execute(&self, py: Python, py_parameters: Vec<PyObject>, py_messages: PyObject) -> PyResult<()> {
-        let gp_parameters = create_parameters_from_arcpy(py, py_parameters)?;
+        let gp_parameters = create_parameters_from_arcpy(&py, py_parameters)?;
         let py_gpmessages = api::PyGpMessages {
             py: &py,
             py_messages

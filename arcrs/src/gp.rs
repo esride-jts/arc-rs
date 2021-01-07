@@ -180,7 +180,12 @@ fn create_parameters_from_arcpy(py: Python, py_parameters: Vec<PyObject>) -> Res
 
                 // Try to create a search cursor
                 let search_cursor = api::PySearchCursor::new(&py, &catalog_path, vec!["*".to_string()], "1=1")?;
-                search_cursor.print();
+                loop {
+                    match search_cursor.next() {
+                        Ok(next_row) => {},
+                        Err(_) =>  break
+                    }
+                }
                 
                 let gp_parameter = builder.build();
                 gp_parameters.push(gp_parameter);       

@@ -14,6 +14,7 @@
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use pyo3::prelude::*;
+use pyo3::types::PyTuple;
 use std::str::FromStr;
 
 /// Represents all available geoprocessing parameter types.
@@ -295,8 +296,10 @@ impl PySearchCursor<'_> {
         Ok(new_instance)
     }
 
-    pub fn print(&self) {
-        print!("PySearchCursor");
+    pub fn next(&self) -> PyResult<Vec<PyObject>> {
+        let row = self.py_cursor.call_method0("next")?.extract()?;
+
+        Ok(row)
     }
 }
 

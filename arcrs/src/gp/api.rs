@@ -275,6 +275,33 @@ impl PyGpMessages<'_> {
 
 
 
+/// Represents a search cursor.
+pub struct PySearchCursor<'a> {
+    pub py: &'a Python<'a>,
+    pub py_cursor: &'a PyAny
+}
+
+impl PySearchCursor<'_> {
+
+    pub fn new<'a>(py: &'a Python, catalog_path: &str, field_names: Vec<String>, where_clause: &str) -> PyResult<PySearchCursor<'a>> {
+        let arcpy_da = PyModule::import(*py, "arcpy.da")?;
+        let py_cursor = arcpy_da.call1("SearchCursor", (catalog_path, field_names, where_clause))?;
+
+        let new_instance = PySearchCursor {
+            py,
+            py_cursor
+        };
+
+        Ok(new_instance)
+    }
+
+    pub fn print(&self) {
+        print!("PySearchCursor");
+    }
+}
+
+
+
 /// Offers the functionalities of a geoprocessing tool
 pub trait GpTool {
 

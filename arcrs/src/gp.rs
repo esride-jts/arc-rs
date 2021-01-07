@@ -18,7 +18,6 @@ pub mod api;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
-use std::str::FromStr;
 
 
 
@@ -178,6 +177,10 @@ fn create_parameters_from_arcpy(py: Python, py_parameters: Vec<PyObject>) -> Res
                 let builder = builder.with_data_type(data_type);
                 let catalog_path = pyparameter_value.catalog_path()?;
                 let builder = builder.with_display_name(&catalog_path);
+
+                // Try to create a search cursor
+                let search_cursor = api::PySearchCursor::new(&py, &catalog_path, vec!["*".to_string()], "1=1")?;
+                search_cursor.print();
                 
                 let gp_parameter = builder.build();
                 gp_parameters.push(gp_parameter);       

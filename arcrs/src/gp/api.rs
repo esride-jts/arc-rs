@@ -14,6 +14,7 @@
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use pyo3::prelude::*;
+use std::str::FromStr;
 
 /// Represents all available geoprocessing parameter types.
 pub enum DataType {
@@ -26,6 +27,22 @@ impl DataType {
         match *self {
             DataType::GPFeatureLayer => "GPFeatureLayer",
             DataType::GPFeatureRecordSetLayer => "GPFeatureRecordSetLayer"
+        }
+    }
+}
+
+impl FromStr for DataType {
+
+    type Err = ();
+
+    fn from_str(data_type_str: &str) -> Result<DataType, Self::Err> {
+        match data_type_str {
+            "GPFeatureLayer" => Ok(DataType::GPFeatureLayer),
+            "GPFeatureRecordSetLayer" => Ok(DataType::GPFeatureRecordSetLayer),
+            "Feature-Set" => Ok(DataType::GPFeatureRecordSetLayer),
+            //_ => Err(())
+            _ => todo!()
+            //_ => unimplemented!()
         }
     }
 }
@@ -49,6 +66,19 @@ impl ParameterType {
     }
 }
 
+impl FromStr for ParameterType {
+    type Err = ();
+
+    fn from_str(parameter_type_str: &str) -> Result<ParameterType, Self::Err> {
+        match parameter_type_str {
+            "Required" => Ok(ParameterType::Required),
+            "Optional" => Ok(ParameterType::Optional),
+            "Derived" => Ok(ParameterType::Derived),
+            _ => Err(())
+        }
+    }
+}
+
 
 
 
@@ -66,6 +96,20 @@ impl Direction {
         }
     }
 }
+
+impl FromStr for Direction {
+
+    type Err = ();
+
+    fn from_str(direction_str: &str) -> Result<Direction, Self::Err> {
+        match direction_str {
+            "Input" => Ok(Direction::Input),
+            "Output" => Ok(Direction::Output),
+            _ => Err(())
+        }
+    }
+}
+
 
 
 /// Defines a geoprocessing parameter.
@@ -97,6 +141,117 @@ impl GpParameter {
 
     pub fn direction(&self) -> &Direction {
         return &self.direction;
+    }
+}
+
+// Represents a builder for a geoprocessing parameter
+pub struct GpParameterBuilder {
+    display_name: String,
+    name: String,
+    data_type: DataType,
+    parameter_type: ParameterType,
+    direction: Direction
+}
+
+impl GpParameterBuilder {
+
+    pub fn new() -> GpParameterBuilder {
+        GpParameterBuilder {
+            display_name: String::from(""),
+            name: String::from(""),
+            data_type: DataType::GPFeatureLayer,
+            parameter_type: ParameterType::Optional,
+            direction: Direction::Input
+        }
+    }
+
+    pub fn with_display_name(mut self, display_name: &str) -> GpParameterBuilder {
+        self.display_name = display_name.to_owned();
+        self
+    }
+
+    pub fn with_name(mut self, name: &str) -> GpParameterBuilder {
+        self.name = name.to_owned();
+        self
+    }
+
+    pub fn with_data_type(mut self, data_type: DataType) -> GpParameterBuilder {
+        self.data_type = data_type;
+        self
+    }
+
+    pub fn with_parameter_type(mut self, parameter_type: ParameterType) -> GpParameterBuilder {
+        self.parameter_type = parameter_type;
+        self
+    }
+
+    pub fn with_direction(mut self, direction: Direction) -> GpParameterBuilder {
+        self.direction = direction;
+        self
+    }
+
+    pub fn build(self) -> GpParameter {
+        GpParameter {
+            display_name: self.display_name,
+            name: self.name,
+            data_type: self.data_type,
+            parameter_type: self.parameter_type,
+            direction: self.direction
+        }
+    }
+}
+
+
+
+/// Represents a geoprocessing parameter having a value.
+/// Extracts the value out of the underlying parameter.
+/// A parameter can contain various values like primitive type (Double, String ...)
+/// or complex types like path to a feature class being hosted in a file geodatabase.
+pub struct PyParameterValue<'a> {
+    py: &'a Python<'a>,
+    py_parameter: PyObject
+}
+
+impl PyParameterValue<'_> {
+
+    pub fn new<'a>(py: &'a Python, py_parameter: PyObject) -> PyParameterValue<'a> {
+        PyParameterValue {
+            py,
+            py_parameter
+        }
+    }
+
+    pub fn data_type(&self) -> PyResult<DataType> {
+        let pydata_type = self.py_parameter.getattr(*self.py, "datatype")?;
+        let data_type_as_text: &str = pydata_type.extract(*self.py)?;
+        match DataType::from_str(data_type_as_text) {
+            Ok(data_type) => Ok(data_type),
+            _ => todo!()
+        }        
+    }
+
+    /// Extracts the catalog path out of this parameter.
+    /// The parameter must represent a feature layer or feature set.
+    pub fn catalog_path(&self) -> PyResult<String> {
+        let arcpy = PyModule::import(*self.py, "arcpy")?;
+        let pyparameter_describe = arcpy.call1("Describe", (&self.py_parameter,))?;
+        let pycatalog_path = pyparameter_describe.getattr("catalogPath")?;
+        let catalog_path_as_text: String = pycatalog_path.extract()?;
+        
+        Ok(catalog_path_as_text)
+    }
+
+    pub fn value_as_text(&self) -> PyResult<String> {
+        let pyvalue_as_text = self.py_parameter.getattr(*self.py, "valueAsText")?;
+        let value_as_text: String = pyvalue_as_text.extract(*self.py)?;
+
+        Ok(value_as_text)
+    }
+
+    pub fn value(&self) -> PyResult<PyObject> {
+        let pyvalue = self.py_parameter.getattr(*self.py, "value")?;
+        
+        Ok(pyvalue)
     }
 }
 

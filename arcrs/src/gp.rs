@@ -18,6 +18,7 @@ pub mod api;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::IntoPyDict;
+use std::str::FromStr;
 
 
 
@@ -168,27 +169,20 @@ fn create_arcpy_parameters(py: Python, parameters: Vec<api::GpParameter>) -> PyR
 fn create_parameters_from_arcpy(py: Python, py_parameters: Vec<PyObject>) -> Result<Vec<api::GpParameter>, PyErr> {
     let mut gp_parameters = Vec::with_capacity(py_parameters.len());
     for py_parameter in py_parameters {
-        let data_type = py_parameter.getattr(py, "datatype")?;
-        let data_type_as_text: String = data_type.extract(py)?;
-        //if "GPFeatureRecordSetLayer" == data_type_as_text {
-            let arcpy = PyModule::import(py, "arcpy")?;
-            let parameter_describe = arcpy.call1("Describe", (&py_parameter,))?;
-            let catalog_path = parameter_describe.getattr("catalogPath")?;
-            let catalog_path_as_text: String = catalog_path.extract()?;
-            //inCatalogPath = arcpy.Describe(inFeatures).catalogPath
-
-            let value_as_text = py_parameter.getattr(py, "valueAsText")?;
-            let value: String = value_as_text.extract(py)?;
-            let gp_parameter = api::GpParameter {
-            display_name: value,
-            name: catalog_path_as_text,
-            data_type: api::DataType::GPFeatureLayer,
-            parameter_type: api::ParameterType::Required,
-            direction: api::Direction::Input 
-        };
-
-        gp_parameters.push(gp_parameter);
-        //}
+        let pyparameter_value = api::PyParameterValue::new(&py, py_parameter);
+        let data_type = pyparameter_value.data_type()?;
+        match data_type {
+            api::DataType::GPFeatureLayer | api::DataType::GPFeatureRecordSetLayer => {
+                
+                let builder = api::GpParameterBuilder::new();
+                let builder = builder.with_data_type(data_type);
+                let catalog_path = pyparameter_value.catalog_path()?;
+                let builder = builder.with_display_name(&catalog_path);
+                
+                let gp_parameter = builder.build();
+                gp_parameters.push(gp_parameter);       
+            }
+        }
     }
     
     Ok(gp_parameters)

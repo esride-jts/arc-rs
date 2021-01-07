@@ -1,6 +1,6 @@
 [package]
 name = "arcrs"
-version = "0.1.1-alpha.1"
+version = "0.1.1-alpha.2"
 authors = ["Jan Tschada <j.tschada@esri-de.com>"]
 edition = "2018"
 description = "Thin Python wrapper for implementing Geoprocessing Tools using Rust."
@@ -12,8 +12,6 @@ keywords = ["arcgis", "geospatial", "geoprocessing", "python"]
 [lib]
 name = "arcrs"
 crate-type = ["cdylib"]
-
-[dependencies]
 
 [dependencies.pyo3]
 version = "0.12.3"

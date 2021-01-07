@@ -169,38 +169,6 @@ fn create_parameters_from_arcpy<'a>(py: &'a Python, py_parameters: Vec<PyObject>
     let mut pyparameter_values = Vec::with_capacity(py_parameters.len());
     for py_parameter in py_parameters {
         let pyparameter_value = api::PyParameterValue::new(&py, py_parameter);
-        /*
-        let data_type = pyparameter_value.data_type()?;
-        match data_type {
-            api::DataType::GPFeatureLayer | api::DataType::GPFeatureRecordSetLayer => {
-                
-                let builder = api::GpParameterBuilder::new();
-                let builder = builder.with_data_type(data_type);
-                let catalog_path = pyparameter_value.catalog_path()?;
-                let builder = builder.with_display_name(&catalog_path);
-
-                // Try to create a search cursor
-                let search_cursor = api::PySearchCursor::new(&py, &catalog_path, vec!["*".to_string()], "1=1")?;
-                loop {
-                    match search_cursor.next() {
-                        Ok(next_row) => {
-                            for field_index in 0..next_row.value_count() {
-                                let row_value = next_row.value(field_index)?;
-
-                                let gp_parameter = builder.build();
-                                gp_parameters.push(gp_parameter);                
-                            }
-                        },
-                        Err(_) =>  break
-                    }
-                }
-                
-                let gp_parameter = builder.build();
-                gp_parameters.push(gp_parameter);       
-            }
-        }
-        */
-
         pyparameter_values.push(pyparameter_value);
     }
     

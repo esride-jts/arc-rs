@@ -45,11 +45,33 @@ impl gp::api::GpTool for DummyGpTool {
     }
 
     fn execute(&self, parameters: Vec<gp::api::PyParameterValue>, messages: gp::api::PyGpMessages) -> PyResult<()> {
+        // IntoCursor trait must be in current scope
+        use gp::api::IntoCursor;
+
         messages.add_message("Hello from Rust!")?;
 
         for gp_parameter in parameters {
             messages.add_message(&gp_parameter.display_name()?)?;
             messages.add_message(&gp_parameter.name()?)?;
+
+            let data_type = gp_parameter.data_type()?;
+            match data_type {
+                gp::api::DataType::GPFeatureLayer | gp::api::DataType::GPFeatureRecordSetLayer => {
+                    // Try to access the features
+                    let search_cursor = gp_parameter.into_search_cursor()?;
+                    loop {
+                        match search_cursor.next() {
+                            Ok(next_row) => {
+                                for field_index in 0..next_row.value_count() {
+                                    let row_value = next_row.value(field_index)?;
+                                    messages.add_message(&row_value)?;
+                                }
+                            },
+                            Err(_) =>  break
+                        }
+                    }
+                }
+            }
         }
 
         Ok(())

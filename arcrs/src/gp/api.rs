@@ -15,6 +15,7 @@
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::types::PyTuple;
 use std::str::FromStr;
 
 /// Represents all available geoprocessing parameter types.
@@ -270,6 +271,17 @@ impl PyParameterValue<'_> {
     }
 }
 
+/// Implements the conversion from catalog path into a search cursor.
+impl IntoCursor for PyParameterValue<'_> {
+    
+    fn into_search_cursor(&self) -> PyResult<PySearchCursor> {
+        let search_cursor = PySearchCursor::new(self.py, &self.catalog_path()?, vec!["*".to_string()], "1=1")?;
+
+        Ok(search_cursor)
+    }
+
+}
+
 
 
 /// Represents the Python geoprocessing messages environment.
@@ -336,11 +348,19 @@ impl PyRow<'_> {
     }
 
     pub fn value(&self, index: usize) -> PyResult<String> {
-        match self.py_values.get(index) {
-            Some(value) => {
-                let value_as_string = value.extract(*self.py)?;
+        match &self.py_values.get(index) {
+            Some(pytuple) => {
+                //let tuple: (i32,) = pytuple.extract(*self.py)?;
+                
+                let any: PyObject = pytuple.extract(*self.py)?;
+                //let id: i32 = pytuple.extract(*self.py)?;
+                Ok(any.to_string())
+                //Ok(String::from("#"))
+                //Ok(tuple.0.to_string())
 
-                Ok(value_as_string)
+                //let value_as_string = value.extract(*self.py)?;
+
+                //Ok(value_as_string)
             },
             _ => Err(PyValueError::new_err("Failed to access the row value!"))
         }
@@ -349,6 +369,14 @@ impl PyRow<'_> {
     pub fn value_count(&self) -> usize {
         self.py_values.len()
     }
+}
+
+
+
+/// Offers access to the underlying features by offering a cursor.
+pub trait IntoCursor {
+
+    fn into_search_cursor(&self) -> PyResult<PySearchCursor>;
 }
 
 

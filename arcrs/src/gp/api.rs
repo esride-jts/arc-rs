@@ -306,6 +306,20 @@ impl PyParameterValue<'_> {
         }
     }
 
+    /// Extracts the spatial reference out of this parameter.
+    /// The parameter must represent a feature layer of feature set.
+    pub fn spatial_reference(&self) -> PyResult<GpSpatialReference> {
+        let arcpy = PyModule::import(*self.py, "arcpy")?;
+        let pyvalue_describe = arcpy.call1("Describe", (self.value()?,))?;
+        let pyspatial_reference = pyvalue_describe.getattr("spatialReference")?;
+        let wkid = pyspatial_reference.getattr("factoryCode")?.extract()?;
+        let spatial_reference = GpSpatialReference {
+            wkid
+        };
+        
+        Ok(spatial_reference)
+    }
+
     pub fn value_as_text(&self) -> PyResult<String> {
         let pyvalue_as_text = self.py_parameter.getattr(*self.py, "valueAsText")?;
         let value_as_text: String = pyvalue_as_text.extract(*self.py)?;
@@ -416,6 +430,13 @@ impl FromStr for ShapeType {
             _ => Err(())
         }
     }
+}
+
+
+
+/// Represents a spatial reference.
+pub struct GpSpatialReference {
+    pub wkid: i32
 }
 
 

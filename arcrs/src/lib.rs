@@ -72,6 +72,10 @@ impl gp::api::GpTool for DummyGpTool {
                     let shape_type = gp_parameter.shape_type()?;
                     messages.add_message(shape_type.as_str())?;
 
+                    // Try to access the spatial reference
+                    let spatial_reference = gp_parameter.spatial_reference()?;
+                    messages.add_message(&spatial_reference.wkid.to_string())?;
+
                     // Try to access the features
                     let search_cursor = gp_parameter.into_search_cursor()?;
                     loop {

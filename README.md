@@ -4,7 +4,7 @@ Represents a thin Python wrapper for implementing Geoprocessing Tools using Rust
 A custom Geoprocessing Tool can be implemented using Python. But, there is a need for implementing high sophistical geospatial analyses using solid rock runtime environments, libraries and frameworks. As an engineer I do not want to miss the capabilities of
 - Efficient code generation (Compiler Buddy)
 - Fail fast and often (Compiler says: "No!")
-- Pay only for what you use (#YAGNI!)
+- Pay only for what you use (#YAGNI)
 
 Nowadays, the best option seems to be Rust.
 

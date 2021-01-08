@@ -358,8 +358,8 @@ impl IntoCursor for PyParameterValue<'_> {
         Ok(search_cursor)
     }
 
-    fn into_insert_cursor(&self) -> PyResult<PySearchCursor> {
-        let insert_cursor = PySearchCursor::new(self.py, &self.catalog_path()?, vec!["*".to_string()], "1=1")?;
+    fn into_insert_cursor(&self, field_names: Vec<String>) -> PyResult<PyInsertCursor> {
+        let insert_cursor = PyInsertCursor::new(self.py, &self.catalog_path()?, field_names)?;
 
         Ok(insert_cursor)
     }
@@ -646,13 +646,13 @@ pub struct Point {
     pub y:f64
 }
 
-impl IntoShape for Point {
+impl ToPyObject  for Point {
     
-    fn into_pyshape(&self, py: Python) -> PyResult<PyObject> {
-        let arcpy = PyModule::import(py, "arcpy")?;
-        let pypoint = arcpy.call1("Point", (self.x, self.y))?.extract()?;
+    fn to_object(&self, py: Python) -> PyObject {
+        let arcpy = PyModule::import(py, "arcpy").unwrap();
+        let point = arcpy.call1("Point", (self.x, self.y)).unwrap();
 
-        Ok(pypoint)
+        point.extract().unwrap()
     }
 }
 
@@ -671,7 +671,7 @@ pub trait IntoCursor {
 
     fn into_search_cursor(&self) -> PyResult<PySearchCursor>;
 
-    fn into_insert_cursor(&self) -> PyResult<PySearchCursor>;
+    fn into_insert_cursor(&self, field_names: Vec<String>) -> PyResult<PyInsertCursor>;
 }
 
 

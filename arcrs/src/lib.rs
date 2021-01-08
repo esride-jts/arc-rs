@@ -18,6 +18,8 @@ mod gp;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
+use std::path::Path;
+
 /// Dummy GP Tool
 #[derive(Copy, Clone)]
 pub struct DummyGpTool {
@@ -55,6 +57,7 @@ impl gp::api::GpTool for DummyGpTool {
         use gp::api::IntoCursor;
 
         messages.add_message("Hello from Rust!")?;
+        let mut out_features_parmeter: Option<gp::api::PyParameterValue> = None;
 
         for gp_parameter in parameters {
             messages.add_message(&gp_parameter.display_name()?)?;
@@ -106,40 +109,76 @@ impl gp::api::GpTool for DummyGpTool {
                         }
                     } else {
                         messages.add_message("Dataset does not exists!")?;
+
+                        // Check for output parameter type
+                        out_features_parmeter = Some(gp_parameter);
                     }
                 }
             }
         }
 
-        // Create a new feature class
-        use gp::tools::GpToolExecute;
-        let create_tool = gp::tools::GpCreateFeatureClassTool::new(String::from(""), String::from("Test"), gp::api::ShapeType::Point, 4326);
-        match create_tool.execute(py) {
-            Ok(gp_result) =>  {
+        // Create a insert cursor
+        match out_features_parmeter {
+            Some(gp_param) => {
 
-                // Try to access the catalog path from the geoprocessing result
-                let catalog_path = gp_result.first_as_str(py)?;
-                messages.add_message(&catalog_path)?;
+                // Get the output path
+                let output_path = gp_param.catalog_path()?;
+                let file_path = Path::new(&output_path);
+                let gdb_path = file_path.parent().unwrap().to_str().unwrap().to_string();
+                let table_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
+                messages.add_message(&gdb_path)?;
+                messages.add_message(&table_name)?;
 
-                let text_field = gp::api::GpField {
-                    name: String::from("Description"),
-                    field_type: gp::api::FieldType::String
-                };
+                // Create a new feature class
+                use gp::tools::GpToolExecute;
+                let wkid = 4326;
+                let create_tool = gp::tools::GpCreateFeatureClassTool::new(gdb_path, table_name, gp::api::ShapeType::Point, wkid);
+                match create_tool.execute(py) {
+                    Ok(gp_result) =>  {
 
-                let fields = vec![text_field];
-                let fields_tool = gp::tools::GpAddFieldsTool::new(catalog_path, fields);
-                match fields_tool.execute(py) {
-                    Ok(_) => Ok(()),
-                    Err(err) => Err(err)
+                        // Try to access the catalog path from the geoprocessing result
+                        let catalog_path = gp_result.first_as_str(py)?;
+                        messages.add_message(&catalog_path)?;
+
+                        let text_field = gp::api::GpField {
+                            name: String::from("Description"),
+                            field_type: gp::api::FieldType::String
+                        };
+
+                        let fields = vec![text_field];
+                        let fields_tool = gp::tools::GpAddFieldsTool::new(catalog_path, fields);
+                        match fields_tool.execute(py) {
+                            Ok(_) => {
+
+                                // Bump some features into it
+                                let field_names = vec![String::from("SHAPE@"), String::from("Description")];
+                                let dessau_location = gp::api::Point {
+                                    x: 12.24555,
+                                    y: 51.83864
+                                };
+
+                                // Fill the feature buffer
+                                let mut feature_buffer = gp::api::InsertBuffer::new(2);
+                                feature_buffer.add_value(py, dessau_location);
+                                feature_buffer.add_value(py, "Dessau");
+
+                                let insert_cursor = gp_param.into_insert_cursor(field_names)?;
+                                insert_cursor.insert(feature_buffer)?;
+
+                                messages.add_message("Feature was inserted!")?;
+
+                                Ok(())
+                            },
+                            Err(err) => Err(err)
+                        }
+                    },
+                    Err(err) => {
+                        //messages.add_message(&err.to_string())?;
+                        Err(err)
+                    }
                 }
-
-                // Bump some features into it
-
             },
-            Err(err) => {
-                //messages.add_message(&err.to_string())?;
-                Err(err)
-            }
+            None => todo!("Ouput parameter type not found!")
         }
     }
 }

@@ -247,7 +247,7 @@ impl PyParameterValue<'_> {
     }
 
     /// Extracts the catalog path out of this parameter.
-    /// The parameter must represent a feature layer or feature set.
+    /// The parameter must represent a table or record set.
     pub fn catalog_path(&self) -> PyResult<String> {
         let arcpy = PyModule::import(*self.py, "arcpy")?;
         let pyparameter_describe = arcpy.call1("Describe", (&self.py_parameter,))?;
@@ -257,6 +257,8 @@ impl PyParameterValue<'_> {
         Ok(catalog_path_as_text)
     }
 
+    /// Extracts the fields out of this paramater.
+    /// The parameter must represent a table of record set.
     pub fn fields(&self) -> PyResult<Vec<GpField>> {
         let arcpy = PyModule::import(*self.py, "arcpy")?;
         let pyvalue_describe = arcpy.call1("Describe", (self.value()?,))?;
@@ -279,6 +281,16 @@ impl PyParameterValue<'_> {
         }
 
         Ok(gp_fields)
+    }
+
+    /// Extracts the name of the shape field out of this parameter.
+    /// The parameter must represent a feature layer of feature set.
+    pub fn shape_field_name(&self) -> PyResult<String> {
+        let arcpy = PyModule::import(*self.py, "arcpy")?;
+        let pyvalue_describe = arcpy.call1("Describe", (self.value()?,))?;
+        let shape_field_name = pyvalue_describe.getattr("shapeFieldName")?.extract()?;
+
+        Ok(shape_field_name)
     }
 
     pub fn value_as_text(&self) -> PyResult<String> {

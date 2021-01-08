@@ -101,7 +101,11 @@ impl gp::api::GpTool for DummyGpTool {
         use gp::tools::GpToolExecute;
         let create_tool = gp::tools::GpCreateFeatureClassTool::new(String::from(""), String::from("Test"), gp::api::ShapeType::Point, 4326);
         match create_tool.execute(py) {
-            Ok(_) => Ok(()),
+            Ok(gp_result) =>  {
+                let catalog_path = gp_result.first_as_str(py)?;
+                messages.add_message(&catalog_path)?;
+                Ok(())
+            },
             Err(err) => {
                 //messages.add_message(&err.to_string())?;
                 Err(err)

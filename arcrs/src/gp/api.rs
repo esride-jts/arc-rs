@@ -15,8 +15,6 @@
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::pyclass::PyClass;
-use pyo3::types::PyTuple;
 use std::str::FromStr;
 
 /// Represents all available geoprocessing parameter types.

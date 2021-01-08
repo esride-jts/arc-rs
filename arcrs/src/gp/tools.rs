@@ -14,12 +14,39 @@
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::api;
+use pyo3::exceptions::PyValueError;
+use pyo3::types::PyList;
 use pyo3::prelude::*;
+
+/// Represents a result from a geoprocessing tool.
+pub struct GpResult {
+    results: Vec<PyObject>
+}
+
+impl GpResult {
+
+    pub fn first_as_str(&self, py: Python) -> PyResult<String> {
+        match self.results.get(0) {
+            Some(first) => Ok(first.extract(py)?),
+            None => Err(PyValueError::new_err("No first result!"))
+        }
+    }
+
+    pub fn as_vecstr(&self) -> Vec<String> {
+        let mut results_as_text = Vec::with_capacity(self.results.len());
+        for result in &self.results {
+            results_as_text.push(result.to_string());
+        }
+        results_as_text
+    }
+}
+
+
 
 /// Offers the execution of a geoprocessing tool.
 pub trait GpToolExecute {
 
-    fn execute(&self, py: Python) -> PyResult<()>;
+    fn execute(&self, py: Python) -> PyResult<GpResult>;
 }
 
 /// Represents a geoprocessing tool for creating a new feature class
@@ -44,11 +71,49 @@ impl GpCreateFeatureClassTool {
 
 impl GpToolExecute for GpCreateFeatureClassTool {
 
-    fn execute(&self, py: Python) -> PyResult<()> {
+    fn execute(&self, py: Python) -> PyResult<GpResult> {
         let arcpy_management = PyModule::import(py, "arcpy.management")?;
         let arguments = (&self.out_path, &self.out_name, self.geometry_type.as_str(), (), (), (), self.wkid);
-        let pytool = arcpy_management.call1("CreateFeatureclass", arguments)?;
+        let pyresult = arcpy_management.call1("CreateFeatureclass", arguments)?;
+        let results = pyresult.extract()?;
+        let gp_result = GpResult {
+            results
+        };
 
-        Ok(())
+        Ok(gp_result)
+    }
+}
+
+
+
+/// Represents a geoprocessing tool for adding fields to an existing table.
+pub struct GpAddFieldsTool {
+    catalog_path: String,
+    fields: Vec<api::GpField>
+}
+
+impl GpAddFieldsTool {
+
+    pub fn new(catalog_path: String, fields: Vec<api::GpField>) -> GpAddFieldsTool {
+        GpAddFieldsTool {
+            catalog_path,
+            fields
+        }
+    }
+}
+
+impl GpToolExecute for GpAddFieldsTool {
+
+    fn execute(&self, py: Python) -> PyResult<GpResult> {
+        let arcpy_management = PyModule::import(py, "arcpy.management")?;
+        let pyfields = PyList::new(py, vec![""]);
+        //let arguments = (&self.catalog_path, &self.out_name, self.geometry_type.as_str(), (), (), (), self.wkid);
+        //arcpy_management.call1("AddFields", arguments)?;
+
+        let gp_result = GpResult {
+            results: vec![]
+        };
+
+        Ok(gp_result)
     }
 }

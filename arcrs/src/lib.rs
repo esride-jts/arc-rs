@@ -102,9 +102,22 @@ impl gp::api::GpTool for DummyGpTool {
         let create_tool = gp::tools::GpCreateFeatureClassTool::new(String::from(""), String::from("Test"), gp::api::ShapeType::Point, 4326);
         match create_tool.execute(py) {
             Ok(gp_result) =>  {
+
+                // Try to access the catalog path from the geoprocessing result
                 let catalog_path = gp_result.first_as_str(py)?;
                 messages.add_message(&catalog_path)?;
-                Ok(())
+
+                let text_field = gp::api::GpField {
+                    name: String::from("Description"),
+                    field_type: gp::api::FieldType::String
+                };
+
+                let fields = vec![text_field];
+                let fields_tool = gp::tools::GpAddFieldsTool::new(catalog_path, fields);
+                match fields_tool.execute(py) {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(err)
+                }
             },
             Err(err) => {
                 //messages.add_message(&err.to_string())?;

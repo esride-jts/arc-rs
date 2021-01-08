@@ -364,6 +364,7 @@ pub enum FieldType {
 }
 
 impl FieldType {
+
     pub fn as_str(&self) -> &'static str {
         match *self {
             FieldType::OID => "OID",
@@ -372,6 +373,18 @@ impl FieldType {
             FieldType::Double => "Double",
             FieldType::Integer => "Integer",
             FieldType::String => "String"
+        }
+    }
+
+    /// Some geoprocessing tools like arcpy.management.AddFields
+    /// expect the following values:
+    /// Text | Float | Double | Short | Long | Date | BLOB | Raster | GUID
+    pub fn as_gpstr(&self) -> &'static str {
+        match *self {
+            FieldType::Double => "Float",
+            FieldType::Integer => "Long",
+            FieldType::String => "Text",
+            _ => self.as_str()
         }
     }
 }

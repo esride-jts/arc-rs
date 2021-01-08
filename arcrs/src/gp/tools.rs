@@ -15,7 +15,7 @@
 
 use super::api;
 use pyo3::exceptions::PyValueError;
-use pyo3::types::PyList;
+use pyo3::types::{PyList, PyTuple};
 use pyo3::prelude::*;
 
 /// Represents a result from a geoprocessing tool.
@@ -106,12 +106,17 @@ impl GpToolExecute for GpAddFieldsTool {
 
     fn execute(&self, py: Python) -> PyResult<GpResult> {
         let arcpy_management = PyModule::import(py, "arcpy.management")?;
-        let pyfields = PyList::new(py, vec![""]);
-        //let arguments = (&self.catalog_path, &self.out_name, self.geometry_type.as_str(), (), (), (), self.wkid);
-        //arcpy_management.call1("AddFields", arguments)?;
+        let mut fields_argument: Vec<&PyList> = Vec::with_capacity(self.fields.len());
+        for field in &self.fields {
+            let pyfield = PyList::new(py, vec![&field.name, &field.field_type.as_gpstr().to_string(), &field.name]);
+            fields_argument.push(pyfield);
+        }
 
+        let arguments = (&self.catalog_path, fields_argument);
+        let pyresult = arcpy_management.call1("AddFields", arguments)?;
+        let results = pyresult.extract()?;
         let gp_result = GpResult {
-            results: vec![]
+            results
         };
 
         Ok(gp_result)

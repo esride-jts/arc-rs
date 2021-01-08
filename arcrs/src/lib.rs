@@ -57,6 +57,13 @@ impl gp::api::GpTool for DummyGpTool {
             let data_type = gp_parameter.data_type()?;
             match data_type {
                 gp::api::DataType::GPFeatureLayer | gp::api::DataType::GPFeatureRecordSetLayer => {
+                    // Try to access the fields
+                    let fields = gp_parameter.fields()?;
+                    for field in fields {
+                        messages.add_message(&field.name)?;
+                        messages.add_message(field.field_type.as_str())?;
+                    }
+
                     // Try to access the features
                     let search_cursor = gp_parameter.into_search_cursor()?;
                     loop {

@@ -257,6 +257,30 @@ impl PyParameterValue<'_> {
         Ok(catalog_path_as_text)
     }
 
+    pub fn fields(&self) -> PyResult<Vec<GpField>> {
+        let arcpy = PyModule::import(*self.py, "arcpy")?;
+        let pyvalue_describe = arcpy.call1("Describe", (self.value()?,))?;
+        let pyfields = pyvalue_describe.getattr("fields")?;
+        let fields: Vec<&PyAny> = pyfields.extract()?;
+        let mut gp_fields = Vec::with_capacity(fields.len());
+        for pyfield in fields {
+            let field_name: String = pyfield.getattr("name")?.extract()?;
+            let field_type_as_text = pyfield.getattr("type")?.extract()?;
+            match FieldType::from_str(field_type_as_text) {
+                Ok(field_type) => {
+                    let gp_field = GpField {
+                        name: field_name,
+                        field_type
+                    };
+                    gp_fields.push(gp_field);
+                }
+                _ => todo!()
+            }
+        }
+
+        Ok(gp_fields)
+    }
+
     pub fn value_as_text(&self) -> PyResult<String> {
         let pyvalue_as_text = self.py_parameter.getattr(*self.py, "valueAsText")?;
         let value_as_text: String = pyvalue_as_text.extract(*self.py)?;
@@ -280,6 +304,56 @@ impl IntoCursor for PyParameterValue<'_> {
         Ok(search_cursor)
     }
 
+}
+
+
+
+/// Represents a field returned by arcpy.Describe or arcpy.ListFields.
+pub struct GpField {
+    pub name: String,
+    pub field_type: FieldType
+}
+
+
+
+/// Represents all known field types.
+pub enum FieldType {
+    OID,
+    Geometry,
+    Date,
+    Double,
+    Integer,
+    String
+}
+
+impl FieldType {
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            FieldType::OID => "OID",
+            FieldType::Geometry => "Geometry",
+            FieldType::Date => "Date",
+            FieldType::Double => "Double",
+            FieldType::Integer => "Integer",
+            FieldType::String => "String"
+        }
+    }
+}
+
+impl FromStr for FieldType {
+
+    type Err = ();
+
+    fn from_str(direction_str: &str) -> Result<FieldType, Self::Err> {
+        match direction_str {
+            "OID" => Ok(FieldType::OID),
+            "Geometry" => Ok(FieldType::Geometry),
+            "Date" => Ok(FieldType::Date),
+            "Double" => Ok(FieldType::Double),
+            "Integer" => Ok(FieldType::Integer),
+            "String" => Ok(FieldType::String),
+            _ => Err(())
+        }
+    }
 }
 
 

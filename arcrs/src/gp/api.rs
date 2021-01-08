@@ -14,12 +14,14 @@
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use pyo3::exceptions::PyValueError;
-use pyo3::types::PyList;
 use pyo3::prelude::*;
 use std::str::FromStr;
 
-/// Represents all available geoprocessing parameter types.
+/// Represents all available geoprocessing parameter data types.
+/// Be aware of the string representation.
+/// Usually aliases like "Feature-Set" and "Feature-Class" is used by the arcpy environment.
 pub enum DataType {
+    DEFeatureClass,
     GPFeatureLayer,
     GPFeatureRecordSetLayer
 }
@@ -27,6 +29,7 @@ pub enum DataType {
 impl DataType {
     pub fn as_str(&self) -> &'static str {
         match *self {
+            DataType::DEFeatureClass => "DEFeatureClass",
             DataType::GPFeatureLayer => "GPFeatureLayer",
             DataType::GPFeatureRecordSetLayer => "GPFeatureRecordSetLayer"
         }
@@ -39,10 +42,13 @@ impl FromStr for DataType {
 
     fn from_str(data_type_str: &str) -> Result<DataType, Self::Err> {
         match data_type_str {
-            "GPFeatureLayer" => Ok(DataType::GPFeatureLayer),
+            "DEFeatureClass" |
+            "Feature-Class" => Ok(DataType::DEFeatureClass),
+            "GPFeatureLayer" |
+            "FeatureLayer" => Ok(DataType::GPFeatureLayer),
             "GPFeatureRecordSetLayer" => Ok(DataType::GPFeatureRecordSetLayer),
             "Feature-Set" => Ok(DataType::GPFeatureRecordSetLayer),
-            //_ => Err(())
+            //_ => Err(data_type_str.to_string())
             _ => todo!("DataType")
             //_ => unimplemented!()
         }
@@ -252,13 +258,23 @@ impl PyParameterValue<'_> {
         let arcpy = PyModule::import(*self.py, "arcpy")?;
         let pyparameter_describe = arcpy.call1("Describe", (&self.py_parameter,))?;
         let pycatalog_path = pyparameter_describe.getattr("catalogPath")?;
-        let catalog_path_as_text: String = pycatalog_path.extract()?;
+        let catalog_path_as_text = pycatalog_path.extract()?;
         
         Ok(catalog_path_as_text)
     }
 
+    /// Uses the catalog path and checks whether or not
+    /// the path points to an existing dataset.
+    pub fn path_exists(&self) -> PyResult<bool> {
+        let arcpy = PyModule::import(*self.py, "arcpy")?;
+        let pyexists = arcpy.call1("Exists", (self.catalog_path()?,))?;
+        let exists = pyexists.extract()?;
+
+        Ok(exists)
+    }
+
     /// Extracts the fields out of this paramater.
-    /// The parameter must represent a table of record set.
+    /// The parameter must represent a table or record set.
     pub fn fields(&self) -> PyResult<Vec<GpField>> {
         let arcpy = PyModule::import(*self.py, "arcpy")?;
         let pyvalue_describe = arcpy.call1("Describe", (self.value()?,))?;
@@ -284,7 +300,7 @@ impl PyParameterValue<'_> {
     }
 
     /// Extracts the name of the shape field out of this parameter.
-    /// The parameter must represent a feature layer of feature set.
+    /// The parameter must represent an existing feature layer or feature set.
     pub fn shape_field_name(&self) -> PyResult<String> {
         let arcpy = PyModule::import(*self.py, "arcpy")?;
         let pyvalue_describe = arcpy.call1("Describe", (self.value()?,))?;
@@ -294,7 +310,7 @@ impl PyParameterValue<'_> {
     }
 
     /// Extracts the shape type of the shape field out of this parameter.
-    /// The parameter must represent a feature layer of feature set.
+    /// The parameter must represent an existing feature layer or feature set.
     pub fn shape_type(&self) -> PyResult<ShapeType> {
         let arcpy = PyModule::import(*self.py, "arcpy")?;
         let pyvalue_describe = arcpy.call1("Describe", (self.value()?,))?;

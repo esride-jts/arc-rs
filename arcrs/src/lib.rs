@@ -41,6 +41,12 @@ impl gp::api::GpTool for DummyGpTool {
             data_type: gp::api::DataType::GPFeatureRecordSetLayer,
             parameter_type: gp::api::ParameterType::Required,
             direction: gp::api::Direction::Input
+        }, gp::api::GpParameter{
+            display_name: String::from("Output Features"),
+            name: String::from("out_features"),
+            data_type: gp::api::DataType::DEFeatureClass,
+            parameter_type: gp::api::ParameterType::Required,
+            direction: gp::api::Direction::Output
         }]
     }
 
@@ -56,42 +62,50 @@ impl gp::api::GpTool for DummyGpTool {
 
             let data_type = gp_parameter.data_type()?;
             match data_type {
-                gp::api::DataType::GPFeatureLayer | gp::api::DataType::GPFeatureRecordSetLayer => {
-                    // Try to access the fields
-                    let fields = gp_parameter.fields()?;
-                    for field in fields {
-                        messages.add_message(&field.name)?;
-                        messages.add_message(field.field_type.as_str())?;
-                    }
+                gp::api::DataType::DEFeatureClass |
+                gp::api::DataType::GPFeatureLayer | 
+                gp::api::DataType::GPFeatureRecordSetLayer => {
 
-                    // Shape field name
-                    let shape_field_name = gp_parameter.shape_field_name()?;
-                    messages.add_message(&shape_field_name)?;
-
-                    // Shape type
-                    let shape_type = gp_parameter.shape_type()?;
-                    messages.add_message(shape_type.as_str())?;
-
-                    // Try to access the spatial reference
-                    let spatial_reference = gp_parameter.spatial_reference()?;
-                    messages.add_message(&spatial_reference.wkid.to_string())?;
-
-                    // Try to access the features
-                    let search_cursor = gp_parameter.into_search_cursor()?;
-                    loop {
-                        match search_cursor.next() {
-                            Ok(next_row) => {
-                                // Try to access OID
-                                let oid: i32 = next_row.as_intvalue(0)?;
-                                messages.add_message(&oid.to_string())?;
-
-                                for field_index in 0..next_row.value_count() {
-                                    let row_value = next_row.value(field_index)?;
-                                    messages.add_message(&row_value)?;
-                                }
-                            },
-                            Err(_) =>  break
+                    // Check whether the dataset exists
+                    if gp_parameter.path_exists()? {
+                        // Try to access the fields
+                        let fields = gp_parameter.fields()?;
+                        for field in fields {
+                            messages.add_message(&field.name)?;
+                            messages.add_message(field.field_type.as_str())?;
                         }
+
+                        // Shape field name
+                        let shape_field_name = gp_parameter.shape_field_name()?;
+                        messages.add_message(&shape_field_name)?;
+
+                        // Shape type
+                        let shape_type = gp_parameter.shape_type()?;
+                        messages.add_message(shape_type.as_str())?;
+
+                        // Try to access the spatial reference
+                        let spatial_reference = gp_parameter.spatial_reference()?;
+                        messages.add_message(&spatial_reference.wkid.to_string())?;
+
+                        // Try to access the features
+                        let search_cursor = gp_parameter.into_search_cursor()?;
+                        loop {
+                            match search_cursor.next() {
+                                Ok(next_row) => {
+                                    // Try to access OID
+                                    let oid: i32 = next_row.as_intvalue(0)?;
+                                    messages.add_message(&oid.to_string())?;
+
+                                    for field_index in 0..next_row.value_count() {
+                                        let row_value = next_row.value(field_index)?;
+                                        messages.add_message(&row_value)?;
+                                    }
+                                },
+                                Err(_) =>  break
+                            }
+                        }
+                    } else {
+                        messages.add_message("Dataset does not exists!")?;
                     }
                 }
             }
@@ -118,6 +132,9 @@ impl gp::api::GpTool for DummyGpTool {
                     Ok(_) => Ok(()),
                     Err(err) => Err(err)
                 }
+
+                // Bump some features into it
+
             },
             Err(err) => {
                 //messages.add_message(&err.to_string())?;

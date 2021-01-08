@@ -73,6 +73,10 @@ impl gp::api::GpTool for DummyGpTool {
                     loop {
                         match search_cursor.next() {
                             Ok(next_row) => {
+                                // Try to access OID
+                                let oid: i32 = next_row.as_intvalue(0)?;
+                                messages.add_message(&oid.to_string())?;
+
                                 for field_index in 0..next_row.value_count() {
                                     let row_value = next_row.value(field_index)?;
                                     messages.add_message(&row_value)?;

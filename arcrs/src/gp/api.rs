@@ -15,6 +15,7 @@
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::pyclass::PyClass;
 use pyo3::types::PyTuple;
 use std::str::FromStr;
 
@@ -447,6 +448,28 @@ impl PyRow<'_> {
                 //let value_as_string = value.extract(*self.py)?;
 
                 //Ok(value_as_string)
+            },
+            _ => Err(PyValueError::new_err("Failed to access the row value!"))
+        }
+    }
+
+    pub fn as_intvalue(&self, index: usize) -> PyResult<i32> {
+        match &self.py_values.get(index) {
+            Some(pytuple) => {
+                let value: i32 = pytuple.extract(*self.py)?;
+                
+                Ok(value)
+            },
+            _ => Err(PyValueError::new_err("Failed to access the row value!"))
+        }
+    }
+
+    pub fn as_doublevalue(&self, index: usize) -> PyResult<f64> {
+        match &self.py_values.get(index) {
+            Some(pytuple) => {
+                let value: f64 = pytuple.extract(*self.py)?;
+                
+                Ok(value)
             },
             _ => Err(PyValueError::new_err("Failed to access the row value!"))
         }

@@ -14,6 +14,7 @@
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use pyo3::exceptions::PyValueError;
+use pyo3::types::PyList;
 use pyo3::prelude::*;
 use std::str::FromStr;
 
@@ -341,6 +342,12 @@ impl IntoCursor for PyParameterValue<'_> {
         Ok(search_cursor)
     }
 
+    fn into_insert_cursor(&self) -> PyResult<PySearchCursor> {
+        let insert_cursor = PySearchCursor::new(self.py, &self.catalog_path()?, vec!["*".to_string()], "1=1")?;
+
+        Ok(insert_cursor)
+    }
+
 }
 
 
@@ -472,29 +479,91 @@ impl PyGpMessages<'_> {
 
 /// Represents a search cursor.
 pub struct PySearchCursor<'a> {
-    pub py: &'a Python<'a>,
-    pub py_cursor: &'a PyAny
+    py: &'a Python<'a>,
+    pycursor: &'a PyAny
 }
 
 impl PySearchCursor<'_> {
 
     pub fn new<'a>(py: &'a Python, catalog_path: &str, field_names: Vec<String>, where_clause: &str) -> PyResult<PySearchCursor<'a>> {
         let arcpy_da = PyModule::import(*py, "arcpy.da")?;
-        let py_cursor = arcpy_da.call1("SearchCursor", (catalog_path, field_names, where_clause))?;
+        let pycursor = arcpy_da.call1("SearchCursor", (catalog_path, field_names, where_clause))?;
 
         let new_instance = PySearchCursor {
             py,
-            py_cursor
+            pycursor
         };
 
         Ok(new_instance)
     }
 
     pub fn next(&self) -> PyResult<PyRow> {
-        let row_values = self.py_cursor.call_method0("next")?.extract()?;
+        let row_values = self.pycursor.call_method0("next")?.extract()?;
         let row = PyRow::new(self.py, row_values);
 
         Ok(row)
+    }
+}
+
+
+
+/// Represents an insert cursor.
+pub struct PyInsertCursor<'a> {
+    py: &'a Python<'a>,
+    pycursor: &'a PyAny
+}
+
+impl PyInsertCursor<'_> {
+
+    pub fn new<'a>(py: &'a Python, catalog_path: &str, field_names: Vec<String>) -> PyResult<PyInsertCursor<'a>> {
+        let arcpy_da = PyModule::import(*py, "arcpy.da")?;
+        let pycursor = arcpy_da.call1("InsertCursor", (catalog_path, field_names))?;
+
+        let new_instance = PyInsertCursor {
+            py,
+            pycursor
+        };
+
+        Ok(new_instance)
+    }
+
+    pub fn insert(&self, mut insert_buffer: InsertBuffer) -> PyResult<()> {
+        let values = insert_buffer.values();
+        self.pycursor.call_method1("insertRow", (values, ))?;
+
+        Ok(())
+    }
+}
+
+
+
+/// Represents an insert buffer.
+pub struct InsertBuffer {
+    values: Vec<PyObject>
+}
+
+impl InsertBuffer {
+
+    pub fn new(value_count: usize) -> InsertBuffer {
+        InsertBuffer {
+            values: Vec::with_capacity(value_count)
+        }
+    }
+
+    /// Adds a new value into this buffer.
+    pub fn add_value<T: ToPyObject>(&mut self, py: Python, value: T) {
+        self.values.push(value.to_object(py));
+    }
+
+    /// Returns all values and replaces the internal values with an empty vector!
+    pub fn values(&mut self) -> Vec<PyObject> {
+        let empty_values = Vec::with_capacity(self.values.len());
+        std::mem::replace(&mut self.values, empty_values)
+    }
+
+    /// Removes all values from this buffer.
+    pub fn reset(&mut self) {
+        self.values.clear();
     }
 }
 
@@ -555,10 +624,38 @@ impl PyRow<'_> {
 
 
 
+/// Represents a point geometry.
+pub struct Point {
+    pub x:f64,
+    pub y:f64
+}
+
+impl IntoShape for Point {
+    
+    fn into_pyshape(&self, py: Python) -> PyResult<PyObject> {
+        let arcpy = PyModule::import(py, "arcpy")?;
+        let pypoint = arcpy.call1("Point", (self.x, self.y))?.extract()?;
+
+        Ok(pypoint)
+    }
+}
+
+
+
+/// Offers access to the underlying shape representation.
+pub trait IntoShape {
+
+    fn into_pyshape(&self, py: Python) -> PyResult<PyObject>;
+}
+
+
+
 /// Offers access to the underlying features by offering a cursor.
 pub trait IntoCursor {
 
     fn into_search_cursor(&self) -> PyResult<PySearchCursor>;
+
+    fn into_insert_cursor(&self) -> PyResult<PySearchCursor>;
 }
 
 

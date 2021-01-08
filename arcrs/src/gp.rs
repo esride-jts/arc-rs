@@ -14,6 +14,7 @@
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod api;
+pub mod tools;
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -210,7 +211,7 @@ impl PyTool {
             py_messages
         };
 
-        self.tool_impl.execute(gp_parameters, py_gpmessages)?;
+        self.tool_impl.execute(py, gp_parameters, py_gpmessages)?;
 
         Ok(())
     }

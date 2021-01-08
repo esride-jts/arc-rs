@@ -561,5 +561,5 @@ pub trait GpTool {
 
     fn parameters(&self) -> Vec<GpParameter>;
 
-    fn execute(&self, parameters: Vec<PyParameterValue>, messages: PyGpMessages) -> PyResult<()>;
+    fn execute(&self, py: Python, parameters: Vec<PyParameterValue>, messages: PyGpMessages) -> PyResult<()>;
 }

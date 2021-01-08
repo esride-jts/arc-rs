@@ -44,7 +44,7 @@ impl gp::api::GpTool for DummyGpTool {
         }]
     }
 
-    fn execute(&self, parameters: Vec<gp::api::PyParameterValue>, messages: gp::api::PyGpMessages) -> PyResult<()> {
+    fn execute(&self, py: Python, parameters: Vec<gp::api::PyParameterValue>, messages: gp::api::PyGpMessages) -> PyResult<()> {
         // IntoCursor trait must be in current scope
         use gp::api::IntoCursor;
 
@@ -97,7 +97,16 @@ impl gp::api::GpTool for DummyGpTool {
             }
         }
 
-        Ok(())
+        // Create a new feature class
+        use gp::tools::GpToolExecute;
+        let create_tool = gp::tools::GpCreateFeatureClassTool::new(String::from(""), String::from("Test"), gp::api::ShapeType::Point, 4326);
+        match create_tool.execute(py) {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                //messages.add_message(&err.to_string())?;
+                Err(err)
+            }
+        }
     }
 }
 

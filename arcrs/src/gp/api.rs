@@ -44,7 +44,7 @@ impl FromStr for DataType {
             "GPFeatureRecordSetLayer" => Ok(DataType::GPFeatureRecordSetLayer),
             "Feature-Set" => Ok(DataType::GPFeatureRecordSetLayer),
             //_ => Err(())
-            _ => todo!()
+            _ => todo!("DataType")
             //_ => unimplemented!()
         }
     }
@@ -243,7 +243,7 @@ impl PyParameterValue<'_> {
         let data_type_as_text: &str = pydata_type.extract(*self.py)?;
         match DataType::from_str(data_type_as_text) {
             Ok(data_type) => Ok(data_type),
-            _ => todo!()
+            _ => todo!("DataType")
         }        
     }
 
@@ -277,7 +277,7 @@ impl PyParameterValue<'_> {
                     };
                     gp_fields.push(gp_field);
                 }
-                _ => todo!()
+                _ => todo!("FieldType")
             }
         }
 
@@ -292,6 +292,18 @@ impl PyParameterValue<'_> {
         let shape_field_name = pyvalue_describe.getattr("shapeFieldName")?.extract()?;
 
         Ok(shape_field_name)
+    }
+
+    /// Extracts the shape type of the shape field out of this parameter.
+    /// The parameter must represent a feature layer of feature set.
+    pub fn shape_type(&self) -> PyResult<ShapeType> {
+        let arcpy = PyModule::import(*self.py, "arcpy")?;
+        let pyvalue_describe = arcpy.call1("Describe", (self.value()?,))?;
+        let shape_type_as_text: String = pyvalue_describe.getattr("shapeType")?.extract()?;
+        match ShapeType::from_str(&shape_type_as_text) {
+            Ok(shape_type) => Ok(shape_type),
+            _ => todo!("ShapeType")
+        }
     }
 
     pub fn value_as_text(&self) -> PyResult<String> {
@@ -371,6 +383,43 @@ impl FromStr for FieldType {
 
 
 
+/// Represents all known shape types.
+pub enum ShapeType {
+    Point,
+    Polyline,
+    Polygon,
+    Multipoint
+}
+
+impl ShapeType {
+
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            ShapeType::Point => "POINT",
+            ShapeType::Polyline => "POLYLINE",
+            ShapeType::Polygon => "POLYGON",
+            ShapeType::Multipoint => "MULTIPOINT"
+        }
+    }
+}
+
+impl FromStr for ShapeType {
+
+    type Err = ();
+
+    fn from_str(shape_type_str: &str) -> Result<ShapeType, Self::Err> {
+        match shape_type_str {
+            "Point" | "POINT" => Ok(ShapeType::Point),
+            "Polyline" | "POLYLINE" => Ok(ShapeType::Polyline),
+            "Polygon" | "POLYGON" => Ok(ShapeType::Polygon),
+            "Multipoint" | "MULTIPOINT" => Ok(ShapeType::Multipoint),
+            _ => Err(())
+        }
+    }
+}
+
+
+
 /// Represents the Python geoprocessing messages environment.
 pub struct PyGpMessages<'a> {
     pub py: &'a Python<'a>,
@@ -437,17 +486,9 @@ impl PyRow<'_> {
     pub fn value(&self, index: usize) -> PyResult<String> {
         match &self.py_values.get(index) {
             Some(pytuple) => {
-                //let tuple: (i32,) = pytuple.extract(*self.py)?;
-                
                 let any: PyObject = pytuple.extract(*self.py)?;
-                //let id: i32 = pytuple.extract(*self.py)?;
+
                 Ok(any.to_string())
-                //Ok(String::from("#"))
-                //Ok(tuple.0.to_string())
-
-                //let value_as_string = value.extract(*self.py)?;
-
-                //Ok(value_as_string)
             },
             _ => Err(PyValueError::new_err("Failed to access the row value!"))
         }

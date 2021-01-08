@@ -68,6 +68,10 @@ impl gp::api::GpTool for DummyGpTool {
                     let shape_field_name = gp_parameter.shape_field_name()?;
                     messages.add_message(&shape_field_name)?;
 
+                    // Shape type
+                    let shape_type = gp_parameter.shape_type()?;
+                    messages.add_message(shape_type.as_str())?;
+
                     // Try to access the features
                     let search_cursor = gp_parameter.into_search_cursor()?;
                     loop {

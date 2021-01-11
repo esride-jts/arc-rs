@@ -56,7 +56,7 @@ impl gp::api::GpTool for DummyGpTool {
 
     fn execute(&self, py: Python, parameters: Vec<gp::api::PyParameterValue>, messages: gp::api::PyGpMessages) -> PyResult<()> {
         // IntoCursor trait must be in current scope
-        use gp::api::IntoCursor;
+        use gp::api::{GeometryFromValues, IntoCursor};
 
         messages.add_message("Hello from Rust!")?;
         let mut out_features_parmeter: Option<gp::api::PyParameterValue> = None;
@@ -64,6 +64,7 @@ impl gp::api::GpTool for DummyGpTool {
         for gp_parameter in parameters {
             messages.add_message(&gp_parameter.display_name()?)?;
             messages.add_message(&gp_parameter.name()?)?;
+            messages.add_message(&gp_parameter.data_type_as_str()?)?;
 
             let data_type = gp_parameter.data_type()?;
             match data_type {
@@ -73,12 +74,9 @@ impl gp::api::GpTool for DummyGpTool {
 
                     // Check whether the dataset exists
                     if gp_parameter.path_exists()? {
-                        // Try to access the fields
-                        let fields = gp_parameter.fields()?;
-                        for field in fields {
-                            messages.add_message(&field.name)?;
-                            messages.add_message(field.field_type.as_str())?;
-                        }
+                        // OID field name
+                        let oid_field_name = gp_parameter.oid_field_name()?;
+                        messages.add_message(&oid_field_name)?;
 
                         // Shape field name
                         let shape_field_name = gp_parameter.shape_field_name()?;
@@ -92,8 +90,24 @@ impl gp::api::GpTool for DummyGpTool {
                         let spatial_reference = gp_parameter.spatial_reference()?;
                         messages.add_message(&spatial_reference.wkid.to_string())?;
 
+                        // Try to access the fields
+                        let fields = gp_parameter.fields()?;
+                        let mut attribute_field_names = Vec::with_capacity(fields.len());
+                        for field in fields {
+                            messages.add_message(&field.name)?;
+                            messages.add_message(field.field_type.as_str())?;
+
+                            if oid_field_name != field.name 
+                            && shape_field_name != field.name {
+                                attribute_field_names.push(field.name);
+                            }
+                        }
+
                         // Try to access the features
-                        let search_cursor = gp_parameter.into_search_cursor()?;
+                        let mut field_names = vec![oid_field_name, "SHAPE@".to_string()];
+                        field_names.append(&mut attribute_field_names);
+                        let where_clause = "1=1";
+                        let search_cursor = gp_parameter.into_search_cursor(field_names, where_clause)?;
                         loop {
                             match search_cursor.next() {
                                 Ok(next_row) => {
@@ -101,8 +115,17 @@ impl gp::api::GpTool for DummyGpTool {
                                     let oid: i32 = next_row.as_intvalue(0)?;
                                     messages.add_message(&oid.to_string())?;
 
-                                    for field_index in 0..next_row.value_count() {
-                                        let row_value = next_row.value(field_index)?;
+                                    // Try to access the geometry instance
+                                    let geometry_as_json = next_row.to_geometry_as_json(1)?;
+                                    messages.add_message(&geometry_as_json)?;
+                                    
+                                    // Try to extract a point from the geometry instance
+                                    let point: gp::api::Point = next_row.value(1)?;
+                                    messages.add_message("Next point...")?;
+                                    messages.add_message(&point.to_string())?;
+
+                                    for field_index in 2..next_row.value_count() {
+                                        let row_value = next_row.as_strvalue(field_index)?;
                                         messages.add_message(&row_value)?;
                                     }
                                 },

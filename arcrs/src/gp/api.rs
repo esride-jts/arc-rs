@@ -21,7 +21,9 @@ use std::str::FromStr;
 
 /// Represents all available geoprocessing parameter data types.
 /// Be aware of the string representation.
-/// Usually aliases like "Feature-Set" and "Feature-Class" is used by the arcpy environment.
+/// Usually aliases like "Feature Set" and "Feature Class" is used by the arcpy environment.
+/// These aliases are language dependent, so with German language setting you also get
+/// aliases like "Feature-Set" and "Feature-Class".
 pub enum DataType {
     DEFeatureClass,
     GPFeatureLayer,
@@ -46,10 +48,12 @@ impl FromStr for DataType {
         match data_type_str {
             "DEFeatureClass" |
             "Feature-Class" => Ok(DataType::DEFeatureClass),
+            "Feature Class" => Ok(DataType::DEFeatureClass),
             "GPFeatureLayer" |
             "FeatureLayer" => Ok(DataType::GPFeatureLayer),
             "GPFeatureRecordSetLayer" => Ok(DataType::GPFeatureRecordSetLayer),
             "Feature-Set" => Ok(DataType::GPFeatureRecordSetLayer),
+            "Feature Set" => Ok(DataType::GPFeatureRecordSetLayer),
             //_ => Err(data_type_str.to_string())
             _ => todo!("DataType")
             //_ => unimplemented!()
@@ -254,6 +258,13 @@ impl PyParameterValue<'_> {
         }        
     }
 
+    pub fn data_type_as_str(&self) -> PyResult<String> {
+        let pydata_type = self.py_parameter.getattr(*self.py, "datatype")?;
+        let data_type_as_text = pydata_type.extract(*self.py)?;
+        
+        Ok(data_type_as_text)        
+    }
+
     /// Extracts the catalog path out of this parameter.
     /// The parameter must represent a table or record set.
     pub fn catalog_path(&self) -> PyResult<String> {
@@ -299,6 +310,16 @@ impl PyParameterValue<'_> {
         }
 
         Ok(gp_fields)
+    }
+
+    /// Extracts the name of the OID field out of this parameter.
+    /// The parameter must represent an existing table or record set.
+    pub fn oid_field_name(&self) -> PyResult<String> {
+        let arcpy = PyModule::import(*self.py, "arcpy")?;
+        let pyvalue_describe = arcpy.call1("Describe", (self.value()?,))?;
+        let oid_field_name = pyvalue_describe.getattr("OIDFieldName")?.extract()?;
+
+        Ok(oid_field_name)
     }
 
     /// Extracts the name of the shape field out of this parameter.
@@ -354,8 +375,8 @@ impl PyParameterValue<'_> {
 /// Implements the conversion from catalog path into a search cursor.
 impl IntoCursor for PyParameterValue<'_> {
     
-    fn into_search_cursor(&self) -> PyResult<PySearchCursor> {
-        let search_cursor = PySearchCursor::new(self.py, &self.catalog_path()?, vec!["*".to_string()], "1=1")?;
+    fn into_search_cursor(&self, field_names: Vec<String>, where_clause: &str) -> PyResult<PySearchCursor> {
+        let search_cursor = PySearchCursor::new(self.py, &self.catalog_path()?, field_names, where_clause)?;
 
         Ok(search_cursor)
     }
@@ -602,7 +623,31 @@ impl PyRow<'_> {
         }
     }
 
-    pub fn value(&self, index: usize) -> PyResult<String> {
+    pub fn value<'a, T: FromPyObject<'a>>(&'a self, index: usize) -> PyResult<T> {
+        match &self.py_values.get(index) {
+            Some(pytuple) => {
+                let any = pytuple.extract(*self.py)?;
+
+                Ok(any)
+            },
+            _ => Err(PyValueError::new_err("Failed to access the row value!"))
+        }
+    }
+
+    /// Returns the shape representation as a geometry instance.
+    /// For more information take a look at https://pro.arcgis.com/de/pro-app/arcpy/classes/geometry.htm
+    pub fn shape(&self, index: usize) -> PyResult<&PyAny> {
+        match &self.py_values.get(index) {
+            Some(pytuple) => {
+                let shape: &PyAny = pytuple.extract(*self.py)?;
+
+                Ok(shape)
+            },
+            _ => Err(PyValueError::new_err("Failed to access the row value!"))
+        }
+    }
+
+    pub fn as_strvalue(&self, index: usize) -> PyResult<String> {
         match &self.py_values.get(index) {
             Some(pytuple) => {
                 let any: PyObject = pytuple.extract(*self.py)?;
@@ -648,7 +693,33 @@ pub struct Point {
     pub y:f64
 }
 
-impl ToPyObject  for Point {
+impl FromPyObject<'_> for Point {
+
+    /// Extracts the point from the shape representation.
+    /// The shape representation can be empty or represent a different shape type.
+    /// If the geometry is empty an error is raised.
+    /// A point is wrapped into a PointGeometry representation.
+    /// The underlying point is extracted from this Geometry instance.
+    /// For more information take a look at https://pro.arcgis.com/de/pro-app/arcpy/classes/geometry.htm
+    fn extract(source: &PyAny) -> PyResult<Point> {
+        let point_count: i64 = source.getattr("pointCount")?.extract()?;
+        if 1 == point_count {
+            let first_point: &PyAny = source.getattr("firstPoint")?.extract()?;
+            let x = first_point.getattr("X")?.extract()?;
+            let y = first_point.getattr("Y")?.extract()?;
+            let point = Point {
+                x,
+                y
+            };
+
+            Ok(point)
+        } else {
+            Err(PyValueError::new_err("The geometry is empty!"))
+        }
+    }
+}
+
+impl ToPyObject for Point {
     
     fn to_object(&self, py: Python) -> PyObject {
         let arcpy = PyModule::import(py, "arcpy").unwrap();
@@ -658,7 +729,35 @@ impl ToPyObject  for Point {
     }
 }
 
+impl ToString for Point {
 
+    fn to_string(&self) -> String 
+    {
+        format!("{x}, {y}", x = self.x, y = self.y)
+    }
+}
+
+
+
+impl GeometryFromValues for PyRow<'_> {
+    
+    fn to_geometry_as_json(&self, index: usize) -> PyResult<String> {
+        let pygeometry = self.shape(index)?;
+        let json = pygeometry.getattr("JSON")?.extract()?;
+        Ok(json)
+    }
+}
+
+
+
+/// Offers access to the Geometry operations.
+pub trait GeometryFromValues {
+
+    /// Returns the JSON geometry from the specified field index.
+    fn to_geometry_as_json(&self, index: usize) -> PyResult<String>;
+}
+
+ 
 
 /// Offers access to the underlying shape representation.
 pub trait IntoShape {
@@ -671,7 +770,7 @@ pub trait IntoShape {
 /// Offers access to the underlying features by offering a cursor.
 pub trait IntoCursor {
 
-    fn into_search_cursor(&self) -> PyResult<PySearchCursor>;
+    fn into_search_cursor(&self, field_names: Vec<String>, where_clause: &str) -> PyResult<PySearchCursor>;
 
     fn into_insert_cursor(&self, field_names: Vec<String>) -> PyResult<PyInsertCursor>;
 }

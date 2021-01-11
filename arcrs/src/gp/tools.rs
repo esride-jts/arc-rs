@@ -20,7 +20,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::types::{PyList, PyTuple};
 use pyo3::prelude::*;
 
-/// Represents a result from a geoprocessing tool.
+/// Represents a moved result from a geoprocessing tool.
 pub struct GpResult {
     results: Vec<PyObject>
 }
@@ -41,6 +41,48 @@ impl GpResult {
         }
         results_as_text
     }
+}
+
+/// Represents a referenced result from a geoprocessing Tool.
+pub struct PyGpResult<'a> {
+    results: Vec<&'a PyAny>
+}
+
+impl PyGpResult<'_> {
+
+    pub fn as_vecstr(&self) -> Vec<String> {
+        let mut results_as_text = Vec::with_capacity(self.results.len());
+        for result in &self.results {
+            results_as_text.push(result.to_string());
+        }
+        results_as_text
+    }
+}
+
+
+
+/// Executes any known GP tool.
+/// You have to pass the toolbox name like "arcpy.datamanagement"
+/// , the tool name like "CreateFeatureClass" and the arguments in.
+/// # Examples
+///
+/// ```
+/// let pyresult = gp::tools::execute_tool(py, "arcpy", "ListFeatureClasses", ())?;
+/// let results_as_text = pyresult.as_vecstr();
+/// for result_as_text in results_as_text {
+///     messages.add_message(&result_as_text)?;
+/// }
+/// ```
+pub fn execute_tool<'a>(py: Python<'a>, gp_toolbox_name: &str, gp_tool_name: &str, arguments: impl IntoPy<Py<PyTuple>>) -> PyResult<PyGpResult<'a>> {
+    let arcpy_toolbox = PyModule::import(py, gp_toolbox_name)?;
+    let pyresult = arcpy_toolbox.call1(gp_tool_name, arguments)?;
+    let results = pyresult.extract()?;
+
+    let py_gpresult = PyGpResult {
+        results
+    };
+
+    Ok(py_gpresult)
 }
 
 

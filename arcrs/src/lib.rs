@@ -55,10 +55,18 @@ impl gp::api::GpTool for DummyGpTool {
     }
 
     fn execute(&self, py: Python, parameters: Vec<gp::api::PyParameterValue>, messages: gp::api::PyGpMessages) -> PyResult<()> {
-        // IntoCursor trait must be in current scope
+        // The API traits must be in the current scope
         use gp::api::{GeometryFromValues, IntoCursor};
 
         messages.add_message("Hello from Rust!")?;
+
+        // Call any tool
+        let pyresult = gp::tools::execute_tool(py, "arcpy", "ListFeatureClasses", ())?;
+        let results_as_text = pyresult.as_vecstr();
+        for result_as_text in results_as_text {
+            messages.add_message(&result_as_text)?;
+        }
+
         let mut out_features_parmeter: Option<gp::api::PyParameterValue> = None;
 
         for gp_parameter in parameters {

@@ -740,11 +740,14 @@ impl ToString for Point {
 
 
 
+/// Implements the necessary methods of the Geometry instance for the Python based row instance.
+/// For more information take a look at https://pro.arcgis.com/de/pro-app/arcpy/classes/geometry.htm
 impl GeometryFromValues for PyRow<'_> {
     
     fn to_geometry_as_json(&self, index: usize) -> PyResult<String> {
         let pygeometry = self.shape(index)?;
         let json = pygeometry.getattr("JSON")?.extract()?;
+
         Ok(json)
     }
 }

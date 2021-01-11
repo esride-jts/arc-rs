@@ -621,6 +621,9 @@ impl PyRow<'_> {
         }
     }
 
+    /// Returns the value at the specified field index.
+    /// The value must be constructable from a PyObject.
+    /// For any given value type you must implement FromPyObject.
     pub fn value<'a, T: FromPyObject<'a>>(&'a self, index: usize) -> PyResult<T> {
         match &self.py_values.get(index) {
             Some(pytuple) => {

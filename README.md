@@ -9,7 +9,7 @@ A custom Geoprocessing Tool can be implemented using Python. But, there is a nee
 Nowadays, the best option seems to be Rust.
 
 ## Features
-- Creating custom Geoprocessing Tools using Rust
+- Create custom Geoprocessing Tools using Rust
 ```
 pub trait GpTool {
 
@@ -22,7 +22,7 @@ pub trait GpTool {
     fn execute(&self, py: Python, parameters: Vec<PyParameterValue>, messages: PyGpMessages) -> PyResult<()>;
 }
 ```
-- Executing any registered Geoprocessing Tool using Rust
+- Execute any registered Geoprocessing Tool using Rust
 ```
 let pyresult = gp::tools::execute_tool(py, "arcpy", "ListFeatureClasses", ())?;
 let results_as_text = pyresult.as_vecstr();

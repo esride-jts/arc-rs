@@ -9,7 +9,27 @@ A custom Geoprocessing Tool can be implemented using Python. But, there is a nee
 Nowadays, the best option seems to be Rust.
 
 ## Features
-- Creating custom Geoprocessing Tools with FeatureSets as parameters using Rust
+- Creating custom Geoprocessing Tools using Rust
+```
+pub trait GpTool {
+
+    fn label(&self) -> &str;
+
+    fn description(&self) -> &str;
+
+    fn parameters(&self) -> Vec<GpParameter>;
+
+    fn execute(&self, py: Python, parameters: Vec<PyParameterValue>, messages: PyGpMessages) -> PyResult<()>;
+}
+```
+- Executing any registered Geoprocessing Tool using Rust
+```
+let pyresult = gp::tools::execute_tool(py, "arcpy", "ListFeatureClasses", ())?;
+let results_as_text = pyresult.as_vecstr();
+for result_as_text in results_as_text {
+    messages.add_message(&result_as_text)?;
+}
+```
 
 ## Instructions
 Building the source by using cargo build release. There is a sample [Python toolbox](https://github.com/esride-jts/arc-rs/blob/main/deploy/arcintegration.pyt) using the provided custom Geoprocessing Tools implemented in Rust.
@@ -17,7 +37,9 @@ Building the source by using cargo build release. There is a sample [Python tool
 ## Requirements
 - Rust v1.44.1
 - pyo3 v0.12.3
-- Windows 10 Platform
+
+## Runtime requirements
+- ArcGIS Pro v2.6 or later on Windows 10
 
 ## Resources
 - [Creating Geoprocessing Tools with Python](https://pro.arcgis.com/en/pro-app/arcpy/geoprocessing_and_python/a-quick-tour-of-creating-tools-in-python.htm)

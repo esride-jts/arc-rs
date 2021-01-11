@@ -1,4 +1,6 @@
-//   Copyright (C) 2021 Jan Tschada (j.tschada@esri.de).
+//   This file is part of arc-rs.
+//   Copyright (C) $CURRENT_YEAR Esri Deutschland GmbH
+//   Contact: Jan Tschada (j.tschada@esri.de)
 //   
 //   This program is free software: you can redistribute it and/or modify
 //   it under the terms of the GNU Lesser General Public License as published by

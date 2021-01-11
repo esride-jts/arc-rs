@@ -1,4 +1,4 @@
-//   This file is part of arc-rs.
+//   This file is part of arc-rs and enables the development of Geoprocessing Tools using Rust.
 //   Copyright (C) 2021 Esri Deutschland GmbH
 //   Contact: Jan Tschada (j.tschada@esri.de)
 //   

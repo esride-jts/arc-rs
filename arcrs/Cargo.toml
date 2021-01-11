@@ -1,6 +1,6 @@
 [package]
 name = "arcrs"
-version = "0.1.1-alpha.5"
+version = "0.1.1-alpha.6"
 authors = ["Jan Tschada <j.tschada@esri-de.com>"]
 edition = "2018"
 description = "Thin Python wrapper for implementing Geoprocessing Tools using Rust."

@@ -548,7 +548,6 @@ impl PySearchCursor<'_> {
 
 /// Represents an insert cursor.
 pub struct PyInsertCursor<'a> {
-    py: &'a Python<'a>,
     pycursor: &'a PyAny
 }
 
@@ -559,7 +558,6 @@ impl PyInsertCursor<'_> {
         let pycursor = arcpy_da.call1("InsertCursor", (catalog_path, field_names))?;
 
         let new_instance = PyInsertCursor {
-            py,
             pycursor
         };
 

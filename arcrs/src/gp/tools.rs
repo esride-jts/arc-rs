@@ -1,5 +1,5 @@
 //   This file is part of arc-rs.
-//   Copyright (C) $CURRENT_YEAR Esri Deutschland GmbH
+//   Copyright (C) 2021 Esri Deutschland GmbH
 //   Contact: Jan Tschada (j.tschada@esri.de)
 //   
 //   This program is free software: you can redistribute it and/or modify

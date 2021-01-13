@@ -12,6 +12,19 @@
 			],
 			"group": "build"
 		},
+		{
+			"label": "cargo release build",
+			"type": "shell",
+			"command": "cargo",
+            "args": [
+                "build",
+                "--release"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
         {
 			"label": "build pyd",
 			"type": "shell",
@@ -20,6 +33,17 @@
 				"./target/debug/copyfeatures.dll", "copyfeatures.pyd"
 			],
 			"dependsOn": ["cargo build"],
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "build release pyd",
+			"type": "shell",
+			"command": "./scripts/Rename_Library.ps1",
+			"args": [
+				"./target/release/copyfeatures.dll", "copyfeatures.pyd"
+			],
+			"dependsOn": ["cargo release build"],
 			"problemMatcher": [],
 			"group": "build"
 		},
@@ -34,5 +58,16 @@
 			"problemMatcher": [],
 			"group": "build"
 		},
+		{
+			"label": "deploy release pyd",
+			"type": "shell",
+			"command": "./scripts/Copy_Library.ps1",
+			"args": [
+				"./target/release/copyfeatures.pyd", "../../deploy/arcrust"
+			],
+			"dependsOn": ["build release pyd"],
+			"problemMatcher": [],
+			"group": "build"
+		}
     ]
 }

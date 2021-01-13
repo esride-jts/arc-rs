@@ -1,0 +1,38 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+			"label": "cargo build",
+			"type": "cargo",
+			"subcommand": "build",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+        {
+			"label": "build pyd",
+			"type": "shell",
+			"command": "./scripts/Rename_Library.ps1",
+			"args": [
+				"./target/debug/copyfeatures.dll", "copyfeatures.pyd"
+			],
+			"dependsOn": ["cargo build"],
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "deploy pyd",
+			"type": "shell",
+			"command": "./scripts/Copy_Library.ps1",
+			"args": [
+				"./target/debug/copyfeatures.pyd", "../../deploy/arcrust"
+			],
+			"dependsOn": ["build pyd"],
+			"problemMatcher": [],
+			"group": "build"
+		},
+    ]
+}

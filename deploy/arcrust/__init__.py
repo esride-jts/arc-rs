@@ -4,7 +4,8 @@ import sys
 # Just for integration testing
 sys.path.append(os.path.dirname(__file__))
 
-import arcrs
+# Import the native Python modules
+import copyfeatures
 
 class Tool(object):
     """
@@ -49,7 +50,7 @@ class ToolRegistry(object):
     """
 
     def __init__(self):
-        self._toolbox = arcrs.create_toolbox('Rust Tools', 'rust_tools')
+        self._toolbox = copyfeatures.create_toolbox('Rust Tools', 'rust_tools')
         self._tool_labels = self._toolbox.tools()
         self._tools = [Tool(self._toolbox, tool_index) for tool_index in range(0, len(self._tool_labels))]
     

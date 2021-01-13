@@ -50,9 +50,11 @@ class ToolRegistry(object):
     """
 
     def __init__(self):
-        self._toolbox = copyfeatures.create_toolbox('Rust Tools', 'rust_tools')
-        self._tool_labels = self._toolbox.tools()
-        self._tools = [Tool(self._toolbox, tool_index) for tool_index in range(0, len(self._tool_labels))]
+        self._tool_labels = []
+        self._tools = []
+        copy_toolbox = copyfeatures.create_toolbox('Rust Copy Tools', 'rust_copy_tools')
+        self._tool_labels.extend(copy_toolbox.tools())
+        self._tools.extend([Tool(copy_toolbox, tool_index) for tool_index in range(0, len(self._tool_labels))])
     
     def find_tool(self, tool_label):
         """

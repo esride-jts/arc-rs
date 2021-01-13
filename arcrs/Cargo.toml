@@ -11,7 +11,7 @@ keywords = ["arcgis", "geospatial", "geoprocessing", "python"]
 
 [lib]
 name = "arcrs"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 
 [dependencies.pyo3]
 version = "0.12.3"

@@ -1,0 +1,18 @@
+[package]
+name = "copyfeatures"
+version = "0.1.0-alpha.1"
+authors = ["Jan Tschada <j.tschada@esri.de>"]
+edition = "2018"
+license = "LGPL-3.0-or-later"
+keywords = ["arcgis", "geospatial", "geoprocessing", "python"]
+
+[lib]
+name = "copyfeatures"
+crate-type = ["cdylib"]
+
+[dependencies.arcrs]
+path = "../../arcrs"
+
+[dependencies.pyo3]
+version = "0.12.3"
+features = ["extension-module"]

@@ -15,7 +15,7 @@
 //   You should have received a copy of the GNU Lesser General Public License
 //   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod gp;
+pub mod gp;
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;

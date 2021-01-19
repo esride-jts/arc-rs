@@ -400,6 +400,7 @@ pub struct GpField {
 
 
 /// Represents all known field types.
+#[derive(Copy, Clone)]
 pub enum FieldType {
     OID,
     Geometry,

@@ -1,6 +1,6 @@
 [package]
 name = "copyfeatures"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 authors = ["Jan Tschada <j.tschada@esri.de>"]
 edition = "2018"
 license = "LGPL-3.0-or-later"

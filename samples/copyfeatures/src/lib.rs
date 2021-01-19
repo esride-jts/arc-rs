@@ -2,10 +2,125 @@ extern crate arcrs;
 
 use arcrs::gp;
 
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
 use std::path::Path;
+
+/// Copy features Tool
+pub struct CopyFeaturesTool {
+
+}
+
+impl gp::api::GpTool for CopyFeaturesTool {
+    
+    fn label(&self) -> &str { "Copy features" }
+    
+    fn description(&self) -> &str { "Copies features from one feature class into another." }
+
+    fn parameters(&self) -> Vec<gp::api::GpParameter> { 
+        vec![gp::api::GpParameter{
+            display_name: String::from("Input Features"),
+            name: String::from("in_features"),
+            data_type: gp::api::DataType::GPFeatureRecordSetLayer,
+            parameter_type: gp::api::ParameterType::Required,
+            direction: gp::api::Direction::Input
+        }, gp::api::GpParameter{
+            display_name: String::from("Output Features"),
+            name: String::from("out_features"),
+            data_type: gp::api::DataType::DEFeatureClass,
+            parameter_type: gp::api::ParameterType::Required,
+            direction: gp::api::Direction::Output
+        }]
+    }
+    
+    fn execute(&self, py: Python, parameters: Vec<gp::api::PyParameterValue>, messages: gp::api::PyGpMessages) -> PyResult<()> {
+        messages.add_message("Copy features...")?;
+
+        let input_param: &gp::api::PyParameterValue = &parameters[0];
+        
+        // Try to access the fields
+        let fields = input_param.fields()?;
+        let mut attribute_fields = Vec::with_capacity(fields.len());
+        let mut input_field_names = vec!["SHAPE@".to_string()];
+        let mut output_field_names = vec!["SHAPE@".to_string()];
+        for field in &fields {
+            if input_param.oid_field_name()? != field.name 
+            && input_param.shape_field_name()? != field.name {
+                let attribute_field = gp::api::GpField {
+                    name: field.name.to_string(),
+                    field_type: field.field_type
+                };
+                attribute_fields.push(attribute_field);
+                
+                input_field_names.push(field.name.to_string());
+                output_field_names.push(field.name.to_string());
+            }
+        }
+
+        let output_param = &parameters[1];
+
+        // Get the output path
+        let output_path = output_param.catalog_path()?;
+        let file_path = Path::new(&output_path);
+        let gdb_path = file_path.parent().unwrap().to_str().unwrap().to_string();
+        let table_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
+        // Create a new feature class
+        use gp::tools::GpToolExecute;
+        let shape_type = input_param.shape_type()?;
+        let spatial_reference = input_param.spatial_reference()?;
+        let wkid = spatial_reference.wkid;
+        let create_tool = gp::tools::GpCreateFeatureClassTool::new(gdb_path, table_name, shape_type, wkid);
+        match create_tool.execute(py) {
+            Ok(gp_result) => {
+                // Try to access the catalog path from the geoprocessing result
+                let catalog_path = gp_result.first_as_str(py)?;
+                let fields_tool = gp::tools::GpAddFieldsTool::new(catalog_path, attribute_fields);
+                match fields_tool.execute(py) {
+                    Ok(_) => {
+                        // Try to access the features
+                        // The API traits must be in the current scope
+                        use gp::api::IntoCursor;
+                        let where_clause = "1=1";
+                        let search_cursor = input_param.into_search_cursor(input_field_names, where_clause)?;
+                        let field_count = output_field_names.len();
+                        let insert_cursor = output_param.into_insert_cursor(output_field_names)?;
+                        loop {
+                            match search_cursor.next() {
+                                Ok(next_row) => {
+                                    //messages.add_message(&field_count.to_string())?;
+                                    //messages.add_message(&next_row.value_count().to_string())?;
+
+                                    // Fill the feature buffer
+                                    let mut feature_buffer = gp::api::InsertBuffer::new(field_count);
+                                    for field_index in 0..next_row.value_count() {
+                                        let row_value: PyObject = next_row.value(field_index)?;
+                                        feature_buffer.add_value(py, &row_value);
+
+                                        //messages.add_message(&next_row.as_strvalue(field_index)?)?;
+                                    }
+                                        
+                                    insert_cursor.insert(feature_buffer)?;
+                                },
+                                Err(_) => break
+                            }
+                        }
+                    }
+                    Err(py_err) => Err(py_err)?
+                }
+            }
+            Err(py_err) => Err(py_err)?
+        }
+
+        messages.add_message("Copy features done.")?;
+
+        Ok(())
+    }
+}
+
+
+
 
 /// Dummy GP Tool
 #[derive(Copy, Clone)]
@@ -206,13 +321,13 @@ impl gp::api::GpTool for DummyGpTool {
 /// Creates a new toolbox
 #[pyfunction]
 fn create_toolbox(label: &str, alias: &str) -> PyResult<gp::PyToolbox> {
-    let dummy_tool = DummyGpTool {
+    let copy_features = CopyFeaturesTool {
     };
 
     let pytoolbox_factory = gp::PyToolboxFactory {
     };
 
-    let py_toolbox = pytoolbox_factory.create_toolbox(label, alias, vec![dummy_tool])?;
+    let py_toolbox = pytoolbox_factory.create_toolbox(label, alias, vec![copy_features])?;
 
     Ok(py_toolbox)
 }

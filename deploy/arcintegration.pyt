@@ -17,7 +17,7 @@ class TestTool(object):
     """
     
     def __init__(self):
-        self._rust_tool = tool_registry.find_tool('Dummy Tool')
+        self._rust_tool = tool_registry.find_tool('Copy features')
         if None is self._rust_tool:
             raise ValueError('Rust tool is not registered!')
 

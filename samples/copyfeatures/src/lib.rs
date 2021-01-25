@@ -87,24 +87,29 @@ impl gp::api::GpTool for CopyFeaturesTool {
                         let field_count = output_field_names.len();
                         let insert_cursor = output_param.into_insert_cursor(output_field_names)?;
                         loop {
+                            match search_cursor.next_row() {
+                                Ok(next_row) => {
+                                    // Insert the row
+                                    insert_cursor.insert_row(next_row)?;
+                                },
+                                Err (_) => break
+                            }
+
+                            /*
                             match search_cursor.next() {
                                 Ok(next_row) => {
-                                    //messages.add_message(&field_count.to_string())?;
-                                    //messages.add_message(&next_row.value_count().to_string())?;
-
                                     // Fill the feature buffer
                                     let mut feature_buffer = gp::api::InsertBuffer::new(field_count);
                                     for field_index in 0..next_row.value_count() {
                                         let row_value: PyObject = next_row.value(field_index)?;
                                         feature_buffer.add_value(py, &row_value);
-
-                                        //messages.add_message(&next_row.as_strvalue(field_index)?)?;
                                     }
                                         
                                     insert_cursor.insert(feature_buffer)?;
                                 },
                                 Err(_) => break
                             }
+                            */
                         }
                     }
                     Err(py_err) => Err(py_err)?

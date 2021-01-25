@@ -543,6 +543,10 @@ impl PySearchCursor<'_> {
 
         Ok(row)
     }
+
+    pub fn next_row(&self) -> PyResult<&PyAny> {
+        self.pycursor.call_method0("next")
+    }
 }
 
 
@@ -570,6 +574,10 @@ impl PyInsertCursor<'_> {
         self.pycursor.call_method1("insertRow", (values, ))?;
 
         Ok(())
+    }
+
+    pub fn insert_row(&self, row: &PyAny) -> PyResult<&PyAny> {
+        self.pycursor.call_method1("insertRow", (row, ))
     }
 }
 
